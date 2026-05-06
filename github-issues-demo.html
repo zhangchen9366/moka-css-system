@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Issues 工作记录演示</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; background: #f5f7fa; color: #333; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { margin-bottom: 20px; }
+        .toolbar { display: flex; gap: 10px; margin-bottom: 20px; }
+        button { padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+        .btn-primary { background: #409eff; color: white; }
+        .btn-success { background: #67c23a; color: white; }
+        .btn-default { background: #fff; border: 1px solid #dcdfe6; }
+        button:hover { opacity: 0.8; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #ebeef5; font-size: 14px; }
+        th { background: #f5f7fa; font-weight: 600; }
+        .tag { padding: 4px 12px; border-radius: 20px; font-size: 12px; }
+        .tag-warning { background: #fdf6ec; color: #e6a23c; }
+        .tag-success { background: #f0f9eb; color: #67c23a; }
+        .loading { text-align: center; padding: 40px; color: #909399; }
+        .error { background: #fef0f0; color: #f56c6c; padding: 12px; border-radius: 8px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container" id="app">
+        <h1>💬 工作记录（GitHub Issues 集成演示）</h1>
+        
+        <div class="toolbar">
+            <button class="btn-primary" @click="loadIssues">🔄 加载GitHub记录</button>
+            <button class="btn-success" @click="openNewIssue">➕ 添加工作记录</button>
+            <button class="btn-default" @click="openIssuesPage">📋 在GitHub查看</button>
+        </div>
+
+        <div v-if="error" class="error">{{ error }}</div>
+
+        <table v-if="issues.length > 0">
+            <thead>
+                <tr>
+                    <th style="width:60px">#</th>
+                    <th>标题</th>
+                    <th style="width:100px">类型</th>
+                    <th style="width:100px">状态</th>
+                    <th style="width:120px">创建时间</th>
+                    <th style="width:100px">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="issue in issues" :key="issue.id">
+                    <td>{{ issue.number }}</td>
+                    <td>
+                        <a :href="issue.html_url" target="_blank" style="color:#409eff;text-decoration:none">{{ issue.title }}</a>
+                    </td>
+                    <td>
+                        <span class="tag tag-warning" v-if="issue.labels.some(l => l.name === '工作记录')">工作记录</span>
+                        <span v-else>-</span>
+                    </td>
+                    <td>
+                        <span class="tag" :class="issue.state === 'open' ? 'tag-warning' : 'tag-success'">
+                            {{ issue.state === 'open' ? '开放中' : '已关闭' }}
+                        </span>
+                    </td>
+                    <td>{{ formatDate(issue.created_at) }}</td>
+                    <td>
+                        <button class="btn-default" style="padding:4px 8px;font-size:12px" @click="openIssue(issue)">查看</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div v-else class="loading">
+            {{ isLoading ? '加载中...' : '暂无记录，点击"加载GitHub记录"按钮获取数据' }}
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.4.15/dist/vue.global.prod.js"></script>
+    <script>
+        const { createApp, ref } = Vue;
+
+        createApp({
+            setup() {
+                const issues = ref([]);
+                const isLoading = ref(false);
+                const error = ref('');
+
+                const repo = 'zhangchen9366/moka-css-system';
+                const apiUrl = `https://api.github.com/repos/${repo}/issues?state=all&per_page=100`;
+
+                const loadIssues = async () => {
+                    isLoading.value = true;
+                    error.value = '';
+                    try {
+                        const response = await fetch(apiUrl);
+                        if (!response.ok) throw new Error('加载失败，请检查网络连接');
+                        const data = await response.json();
+                        issues.value = data;
+                    } catch (err) {
+                        error.value = err.message;
+                    } finally {
+                        isLoading.value = false;
+                    }
+                };
+
+                const openNewIssue = () => {
+                    window.open(`https://github.com/${repo}/issues/new?template=work_record.md`, '_blank');
+                };
+
+                const openIssuesPage = () => {
+                    window.open(`https://github.com/${repo}/issues`, '_blank');
+                };
+
+                const openIssue = (issue) => {
+                    window.open(issue.html_url, '_blank');
+                };
+
+                const formatDate = (dateStr) => {
+                    const d = new Date(dateStr);
+                    return d.toLocaleDateString('zh-CN');
+                };
+
+                return { issues, isLoading, error, loadIssues, openNewIssue, openIssuesPage, openIssue, formatDate };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
