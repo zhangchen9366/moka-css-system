@@ -1231,7 +1231,10 @@
                     <div class="header-bar">
                         <h2>📈 数据看板</h2>
                         <div>
-                            <button class="btn btn-default" @click="showImportModal=true">📥 导入</button>
+                            <span v-if="lastSyncTime" style="font-size:12px;color:#909399;margin-right:12px">上次同步: {{lastSyncTime}}</span>
+                            <button class="btn btn-default" @click="loadAllFromCloud" :disabled="isSyncing" style="margin-right:8px">☁️ 从云端加载</button>
+                            <button class="btn btn-primary" @click="syncAllToCloud" :disabled="isSyncing">{{isSyncing?'同步中...':'☁️ 立即同步'}}</button>
+                            <button class="btn btn-default" @click="showImportModal=true" style="margin-left:8px">📥 导入</button>
                             <button class="btn btn-default" @click="exportAll">📤 导出Excel</button>
                         </div>
                     </div>
@@ -1862,6 +1865,142 @@
     const {createApp, ref, computed} = Vue;
     createApp({
         setup() {
+            // ===== JSONBin 云端同步配置 =====
+            const JSONBIN_CONFIG = {
+                masterKey: '$2a$10$94MoVDNRO0bakGDYcTsN3.BEiTefnDwwkXGndi1VuAZqxhKHhggby',
+                bins: {
+                    customers: '69fb0cafaaba882197798d05',
+                    records: '69fb0cd5856a682189b1a41d',
+                    configs: '69fb0ce4aaba882197798e31',
+                    meetings: '69fb0ced36566621a82f8962',
+                    weeklyReports: '69fb0cfb856a682189b1a4c4'
+                },
+                apiUrl: 'https://api.jsonbin.io/v3'
+            };
+            
+            // 云端同步状态
+            const isSyncing = ref(false);
+            const lastSyncTime = ref(localStorage.getItem('lastSyncTime') || '');
+            const syncError = ref('');
+            
+            // JSONBin API 调用封装
+            const jsonbinGet = async (binId) => {
+                try {
+                    const response = await fetch(`${JSONBIN_CONFIG.apiUrl}/b/${binId}/latest`, {
+                        headers: {
+                            'X-Master-Key': JSONBIN_CONFIG.masterKey
+                        }
+                    });
+                    if (!response.ok) throw new Error('获取数据失败');
+                    const data = await response.json();
+                    return data.record;
+                } catch (error) {
+                    console.error('JSONBin GET 错误:', error);
+                    return null;
+                }
+            };
+            
+            const jsonbinPut = async (binId, data) => {
+                try {
+                    const response = await fetch(`${JSONBIN_CONFIG.apiUrl}/b/${binId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Master-Key': JSONBIN_CONFIG.masterKey
+                        },
+                        body: JSON.stringify(data)
+                    });
+                    if (!response.ok) throw new Error('保存数据失败');
+                    return true;
+                } catch (error) {
+                    console.error('JSONBin PUT 错误:', error);
+                    return false;
+                }
+            };
+            
+            // 同步所有数据到云端
+            const syncAllToCloud = async () => {
+                isSyncing.value = true;
+                syncError.value = '';
+                try {
+                    // 同步客户数据
+                    const customerData = { ...allData.value };
+                    await jsonbinPut(JSONBIN_CONFIG.bins.customers, customerData);
+                    
+                    // 同步会话记录
+                    await jsonbinPut(JSONBIN_CONFIG.bins.records, records.value);
+                    
+                    // 同步配置记录
+                    await jsonbinPut(JSONBIN_CONFIG.bins.configs, configs.value);
+                    
+                    // 同步会议记录
+                    await jsonbinPut(JSONBIN_CONFIG.bins.meetings, meetings.value);
+                    
+                    // 同步周报
+                    await jsonbinPut(JSONBIN_CONFIG.bins.weeklyReports, weeklyReports.value);
+                    
+                    const now = new Date().toLocaleString('zh-CN');
+                    lastSyncTime.value = now;
+                    localStorage.setItem('lastSyncTime', now);
+                    showToast('全部数据已同步到云端', 'success');
+                } catch (error) {
+                    syncError.value = error.message;
+                    showToast('同步失败: ' + error.message, 'error');
+                } finally {
+                    isSyncing.value = false;
+                }
+            };
+            
+            // 从云端加载所有数据
+            const loadAllFromCloud = async () => {
+                try {
+                    // 同步客户数据
+                    const cloudCustomers = await jsonbinGet(JSONBIN_CONFIG.bins.customers);
+                    if (cloudCustomers) {
+                        Object.assign(allData.value, cloudCustomers);
+                        saveToStorage();
+                    }
+                    
+                    // 先将会话记录同步到云端（合并）
+                    const cloudRecords = await jsonbinGet(JSONBIN_CONFIG.bins.records);
+                    const mergedRecords = cloudRecords && Array.isArray(cloudRecords) ? 
+                        [...cloudRecords, ...records.value.filter(r => 
+                            !cloudRecords.some(c => c['提交时间'] === r['提交时间'] && c['客户'] === r['客户'])
+                        )] : records.value;
+                    await jsonbinPut(JSONBIN_CONFIG.bins.records, mergedRecords);
+                    records.value = mergedRecords;
+                    saveRecords();
+                    
+                    // 同步配置记录
+                    const cloudConfigs = await jsonbinGet(JSONBIN_CONFIG.bins.configs);
+                    const mergedConfigs = cloudConfigs && Array.isArray(cloudConfigs) ? 
+                        [...cloudConfigs, ...configs.value.filter(c => 
+                            !cloudConfigs.some(cc => cc['日期'] === c['日期'] && cc['客户'] === c['客户'])
+                        )] : configs.value;
+                    await jsonbinPut(JSONBIN_CONFIG.bins.configs, mergedConfigs);
+                    configs.value = mergedConfigs;
+                    saveConfigs();
+                    
+                    // 同步会议记录
+                    const cloudMeetings = await jsonbinGet(JSONBIN_CONFIG.bins.meetings);
+                    const mergedMeetings = cloudMeetings && Array.isArray(cloudMeetings) ? 
+                        [...cloudMeetings, ...meetings.value.filter(m => 
+                            !cloudMeetings.some(cm => cm['日期'] === m['日期'] && cm['会议主题'] === m['会议主题'])
+                        )] : meetings.value;
+                    await jsonbinPut(JSONBIN_CONFIG.bins.meetings, mergedMeetings);
+                    meetings.value = mergedMeetings;
+                    saveMeetings();
+                    
+                    const now = new Date().toLocaleString('zh-CN');
+                    lastSyncTime.value = now;
+                    localStorage.setItem('lastSyncTime', now);
+                    showToast('已从云端加载并合并最新数据', 'success');
+                } catch (error) {
+                    console.error('从云端加载数据失败:', error);
+                    showToast('加载失败: ' + error.message, 'error');
+                }
+            };
+            
             // CSS成员列表（下拉菜单用）
             const cssList = ['张辰', '李晓丽', '娄洋', '宋明亮', '曾瑞锋', '王俊朋', '周旺', '王亚淼', '徐琪', '彭博'];
             
@@ -1919,7 +2058,9 @@
                 isLoggedIn.value = true;
                 localStorage.setItem('isLoggedIn', 'true');
                 localStorage.setItem('userEmail', email);
-                showToast('登录成功');
+                showToast('登录成功，正在从云端加载数据...');
+                // 登录成功后自动从云端加载数据
+                loadAllFromCloud();
             };
             
             const handleLogout = () => {
@@ -6150,7 +6291,7 @@
                 editVisible.value = true;
             };
             
-            const saveForm = () => {
+            const saveForm = async () => {
                 // 通过字段名判断当前编辑的是哪种类型的记录
                 const hasSubmitTime = editForm.value['提交时间'] !== undefined;
                 const hasPhoneMeeting = editForm.value['电话/会议主题'] !== undefined || editForm.value['沟通类型'] !== undefined;
@@ -6165,6 +6306,9 @@
                         records.value.push(newRecord);
                     }
                     saveRecords();
+                    // 自动同步到云端
+                    const ok = await jsonbinPut(JSONBIN_CONFIG.bins.records, records.value);
+                    if (!ok) showToast('⚠️ 云端同步失败，请点击「立即同步」手动同步', 'warning');
                 } else if (hasConfigSource) {
                     // 配置记录
                     const newConfig = {...editForm.value};
@@ -6174,6 +6318,9 @@
                         configs.value.push(newConfig);
                     }
                     saveConfigs();
+                    // 自动同步到云端
+                    const ok2 = await jsonbinPut(JSONBIN_CONFIG.bins.configs, configs.value);
+                    if (!ok2) showToast('⚠️ 云端同步失败，请点击「立即同步」手动同步', 'warning');
                 } else if (hasPhoneMeeting) {
                     // 会议记录
                     const newMeeting = {...editForm.value};
@@ -6183,6 +6330,9 @@
                         meetings.value.push(newMeeting);
                     }
                     saveMeetings();
+                    // 自动同步到云端
+                    const ok3 = await jsonbinPut(JSONBIN_CONFIG.bins.meetings, meetings.value);
+                    if (!ok3) showToast('⚠️ 云端同步失败，请点击「立即同步」手动同步', 'warning');
                 } else {
                     // 客户数据
                     if (editOriginalIndex.value >= 0) {
@@ -6192,6 +6342,9 @@
                         tableData.value.push(editForm.value);
                     }
                     saveToStorage();
+                    // 自动同步到云端
+                    const ok4 = await jsonbinPut(JSONBIN_CONFIG.bins.customers, allData.value);
+                    if (!ok4) showToast('⚠️ 云端同步失败，请点击「立即同步」手动同步', 'warning');
                 }
                 editVisible.value = false;
                 showToast('保存成功');
@@ -6199,20 +6352,28 @@
             
             const confirmDelete = (r, idx) => { editForm.value = {...r}; deleteIndex.value = idx; deleteType.value = 'data'; deleteVisible.value = true; };
             
-            const doDelete = () => {
+            const doDelete = async () => {
                 if (deleteType.value === 'data') {
                     const ridx = tableData.value.indexOf(filteredData.value[deleteIndex.value]);
                     tableData.value.splice(ridx, 1);
                     saveToStorage();
+                    // 自动同步到云端
+                    await jsonbinPut(JSONBIN_CONFIG.bins.customers, allData.value);
                 } else if (deleteType.value === 'record') {
                     records.value.splice(deleteIndex.value, 1);
                     saveRecords();
+                    // 自动同步到云端
+                    await jsonbinPut(JSONBIN_CONFIG.bins.records, records.value);
                 } else if (deleteType.value === 'config') {
                     configs.value.splice(deleteIndex.value, 1);
                     saveConfigs();
+                    // 自动同步到云端
+                    await jsonbinPut(JSONBIN_CONFIG.bins.configs, configs.value);
                 } else if (deleteType.value === 'meeting') {
                     meetings.value.splice(deleteIndex.value, 1);
                     saveMeetings();
+                    // 自动同步到云端
+                    await jsonbinPut(JSONBIN_CONFIG.bins.meetings, meetings.value);
                 }
                 deleteVisible.value = false;
                 showToast('删除成功');
@@ -6501,6 +6662,8 @@
             return {
                 // 用户
                 isLoggedIn, loginEmail, loginError, handleLogin, handleLogout, currentUser, teamMembers, cssList, categoryOptions,
+                // 云端同步
+                isSyncing, lastSyncTime, syncAllToCloud, loadAllFromCloud,
                 // 数据
                 allData, records, configs, meetings, weeklyReports,
                 // 周报汇总
