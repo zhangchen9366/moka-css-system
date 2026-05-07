@@ -1730,8 +1730,8 @@
                         <template v-for="col in editColumns" :key="col.key">
                             <div class="form-item" :class="col.full?'full':''">
                                 <label>{{col.label}}</label>
-                                <!-- 客户搜索下拉（会话记录专属） -->
-                                <div v-if="col.key === '客户'" class="customer-select-wrap">
+                                <!-- 客户搜索下拉（会话记录/配置记录/会议记录通用） -->
+                                <div v-if="['客户', '客户公司名称', '客户名称'].includes(col.key)" class="customer-select-wrap">
                                     <div class="customer-select-input" :class="{open: customerDropdownOpen}" @click="toggleCustomerDropdown">
                                         <span class="text" :class="editForm[col.key] ? '' : 'placeholder'">{{editForm[col.key] || '请搜索选择客户'}}</span>
                                         <span class="actions">
@@ -6640,16 +6640,23 @@
                 }
             };
             
-            // 选择客户
+            // 选择客户（通用，根据当前编辑的字段动态更新）
             const selectCustomer = (name) => {
-                editForm.value['客户'] = name;
+                // 找到当前编辑的客户字段key
+                const customerKey = editColumns.value.find(col => ['客户', '客户公司名称', '客户名称'].includes(col.key))?.key;
+                if (customerKey) {
+                    editForm.value[customerKey] = name;
+                }
                 customerDropdownOpen.value = false;
                 customerSearchText.value = '';
             };
             
-            // 清除客户选择
+            // 清除客户选择（通用）
             const clearCustomer = () => {
-                editForm.value['客户'] = '';
+                const customerKey = editColumns.value.find(col => ['客户', '客户公司名称', '客户名称'].includes(col.key))?.key;
+                if (customerKey) {
+                    editForm.value[customerKey] = '';
+                }
                 customerSearchText.value = '';
             };
             
