@@ -958,6 +958,92 @@
         .date-range { display: flex; align-items: center; gap: 10px; margin-left: 18px; }
         .date-range span { color: #6ee7b7; font-weight: 600; }
 
+        /* ===== 日期范围筛选 ===== */
+        .date-range-filter {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-strong);
+            border-radius: 10px;
+            padding: 5px 10px;
+            font-size: 13px;
+        }
+        .date-range-filter .range-label {
+            color: var(--text-muted);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .date-range-filter input[type="date"] {
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: 13px;
+            padding: 2px 4px;
+            cursor: pointer;
+            outline: none;
+            width: 130px;
+        }
+        .date-range-filter .range-sep {
+            color: var(--text-muted);
+            font-size: 12px;
+            padding: 0 2px;
+        }
+        .date-range-filter .clear-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0 2px;
+            line-height: 1;
+            border-radius: 4px;
+            transition: color 0.2s;
+        }
+        .date-range-filter .clear-btn:hover { color: var(--danger); }
+
+        /* ===== 周次选择器优化 ===== */
+        .week-selector-new {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+        }
+        .week-selector-new label {
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+        .week-selector-new input[type="week"] {
+            border: 1px solid var(--border-strong);
+            border-radius: 8px;
+            padding: 7px 12px;
+            font-size: 13px;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .week-selector-new input[type="week"]:focus { border-color: var(--primary); }
+        .week-selector-new .week-badge {
+            background: rgba(79,70,229,0.1);
+            color: var(--primary);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .week-selector-new .week-badge .icon { font-size: 14px; }
+
         /* ===== 成员状态 ===== */
         .member-stat { 
             display: flex; 
@@ -1294,7 +1380,13 @@
                                         <option value="未解决">未解决</option>
                                         <option value="跟进中">跟进中</option>
                                     </select>
-                                    <input type="date" class="input" v-model="filterDate" @change="filterRecords" style="width:150px">
+                                    <div class="date-range-filter">
+                                        <span class="range-label">📅</span>
+                                        <input type="date" v-model="filterDateStart" @change="filterRecords" placeholder="开始日期">
+                                        <span class="range-sep">—</span>
+                                        <input type="date" v-model="filterDateEnd" @change="filterRecords" placeholder="结束日期">
+                                        <button v-if="filterDateStart || filterDateEnd" class="clear-btn" @click="filterDateStart='';filterDateEnd='';filterRecords()" title="清除日期筛选">×</button>
+                                    </div>
                                 </div>
                                 <div class="toolbar-right">
                                     <button class="btn btn-primary btn-sm" @click="openRecordModal('add')">➕ 记录会话</button>
@@ -1348,7 +1440,13 @@
                                         <option value="客户">客户</option>
                                         <option value="CSM">CSM</option>
                                     </select>
-                                    <input type="date" class="input" v-model="configFilterDate" @change="filterConfigs" style="width:150px">
+                                    <div class="date-range-filter">
+                                        <span class="range-label">📅</span>
+                                        <input type="date" v-model="configFilterDateStart" @change="filterConfigs" placeholder="开始日期">
+                                        <span class="range-sep">—</span>
+                                        <input type="date" v-model="configFilterDateEnd" @change="filterConfigs" placeholder="结束日期">
+                                        <button v-if="configFilterDateStart || configFilterDateEnd" class="clear-btn" @click="configFilterDateStart='';configFilterDateEnd='';filterConfigs()" title="清除日期筛选">×</button>
+                                    </div>
                                 </div>
                                 <div class="toolbar-right">
                                     <button class="btn btn-primary btn-sm" @click="openConfigModal('add')">➕ 添加配置</button>
@@ -1403,7 +1501,13 @@
                                         <option value="电话">电话</option>
                                         <option value="会议">会议</option>
                                     </select>
-                                    <input type="date" class="input" v-model="meetingFilterDate" @change="filterMeetings" style="width:150px">
+                                    <div class="date-range-filter">
+                                        <span class="range-label">📅</span>
+                                        <input type="date" v-model="meetingFilterDateStart" @change="filterMeetings" placeholder="开始日期">
+                                        <span class="range-sep">—</span>
+                                        <input type="date" v-model="meetingFilterDateEnd" @change="filterMeetings" placeholder="结束日期">
+                                        <button v-if="meetingFilterDateStart || meetingFilterDateEnd" class="clear-btn" @click="meetingFilterDateStart='';meetingFilterDateEnd='';filterMeetings()" title="清除日期筛选">×</button>
+                                    </div>
                                 </div>
                                 <div class="toolbar-right">
                                     <button class="btn btn-primary btn-sm" @click="openMeetingModal('add')">➕ 添加记录</button>
@@ -1449,11 +1553,14 @@
                     <div class="panel">
                         <div class="panel-header"><span class="panel-title">📝 周报填写</span></div>
                         <div class="panel-body">
-                            <div class="week-selector">
-                                <label>选择周次：</label>
+                            <div class="week-selector-new">
+                                <label>📅 选择周次</label>
                                 <input type="week" v-model="currentWeek" @change="loadWeeklyReport">
-                                <button class="btn btn-default btn-sm" @click="currentWeek = getCurrentWeek()">本周</button>
-                                <div class="date-range">日期范围：<span>{{getWeekDateRange()}}</span></div>
+                                <button class="btn btn-default btn-sm" @click="currentWeek = getCurrentWeek(); loadWeeklyReport()">本周</button>
+                                <div class="week-badge">
+                                    <span class="icon">📆</span>
+                                    <span>{{getWeekDateRange()}}</span>
+                                </div>
                             </div>
                             
                             <form class="weekly-form" @submit.prevent="saveWeeklyReport">
@@ -1598,8 +1705,8 @@
                     <div class="panel">
                         <div class="panel-header"><span class="panel-title">📊 团队周报汇总</span></div>
                         <div class="panel-body">
-                            <div class="week-selector">
-                                <label>选择周次：</label>
+                            <div class="week-selector-new">
+                                <label>📅 选择周次</label>
                                 <input type="week" v-model="summaryWeek" @change="loadWeekSummary">
                                 <button class="btn btn-default btn-sm" @click="summaryWeek = getCurrentWeek(); loadWeekSummary()">本周</button>
                             </div>
@@ -5682,18 +5789,24 @@
             const filterChannel = ref('');
             const filterStatus = ref('');
             const filterDate = ref('');
+            const filterDateStart = ref('');
+            const filterDateEnd = ref('');
             
             // 配置记录数据
             const configs = ref(JSON.parse(localStorage.getItem('workConfigs') || '[]'));
             const configPage = ref(1);
             const configFilterSource = ref('');
             const configFilterDate = ref('');
+            const configFilterDateStart = ref('');
+            const configFilterDateEnd = ref('');
             
             // 会议记录数据
             const meetings = ref(JSON.parse(localStorage.getItem('workMeetings') || '[]'));
             const meetingPage = ref(1);
             const meetingFilterType = ref('');
             const meetingFilterDate = ref('');
+            const meetingFilterDateStart = ref('');
+            const meetingFilterDateEnd = ref('');
             
             // 周报相关
             const weeklyReports = ref(JSON.parse(localStorage.getItem('weeklyReports') || '[]'));
@@ -5884,7 +5997,10 @@
                 let d = records.value;
                 if (searchText.value) { const s = searchText.value.toLowerCase(); d = d.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(s))); }
                 if (filterStatus.value) d = d.filter(r => r.是否解决 === filterStatus.value);
-                if (filterDate.value) d = d.filter(r => r.提交时间 && r.提交时间.startsWith(filterDate.value));
+                // 日期范围筛选（兼容旧单日filterDate）
+                if (filterDateStart.value) d = d.filter(r => r.提交时间 && r.提交时间 >= filterDateStart.value);
+                if (filterDateEnd.value) d = d.filter(r => r.提交时间 && r.提交时间 <= filterDateEnd.value);
+                if (!filterDateStart.value && !filterDateEnd.value && filterDate.value) d = d.filter(r => r.提交时间 && r.提交时间.startsWith(filterDate.value));
                 return d.sort((a,b) => new Date(b.提交时间) - new Date(a.提交时间));
             });
             
@@ -5910,7 +6026,10 @@
                 let d = configs.value;
                 if (searchText.value) { const s = searchText.value.toLowerCase(); d = d.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(s))); }
                 if (configFilterSource.value) d = d.filter(r => r.配置来源 === configFilterSource.value);
-                if (configFilterDate.value) d = d.filter(r => r.日期 && r.日期.startsWith(configFilterDate.value));
+                // 日期范围筛选
+                if (configFilterDateStart.value) d = d.filter(r => r.日期 && r.日期 >= configFilterDateStart.value);
+                if (configFilterDateEnd.value) d = d.filter(r => r.日期 && r.日期 <= configFilterDateEnd.value);
+                if (!configFilterDateStart.value && !configFilterDateEnd.value && configFilterDate.value) d = d.filter(r => r.日期 && r.日期.startsWith(configFilterDate.value));
                 return d.sort((a,b) => new Date(b.日期) - new Date(a.日期));
             });
             
@@ -5936,7 +6055,10 @@
                 let d = meetings.value;
                 if (searchText.value) { const s = searchText.value.toLowerCase(); d = d.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(s))); }
                 if (meetingFilterType.value) d = d.filter(r => r.沟通类型 === meetingFilterType.value);
-                if (meetingFilterDate.value) d = d.filter(r => r.日期 && r.日期.startsWith(meetingFilterDate.value));
+                // 日期范围筛选
+                if (meetingFilterDateStart.value) d = d.filter(r => r.日期 && r.日期 >= meetingFilterDateStart.value);
+                if (meetingFilterDateEnd.value) d = d.filter(r => r.日期 && r.日期 <= meetingFilterDateEnd.value);
+                if (!meetingFilterDateStart.value && !meetingFilterDateEnd.value && meetingFilterDate.value) d = d.filter(r => r.日期 && r.日期.startsWith(meetingFilterDate.value));
                 return d.sort((a,b) => new Date(b.日期) - new Date(a.日期));
             });
             
@@ -6682,13 +6804,13 @@
                 todayRecordsCount, weekRecordCount, weekConfigHours, weekConfigCount, weekMeetingHours, weekMeetingCount,
                 filledMembers, isMemberFilledToday, getMemberTodayRecords, getMemberTodayConfig, getMemberTodayMeeting,
                 // 会话记录
-                recordPage, filteredRecords, paginatedRecords, recordTotalPages, recordVisiblePages, searchText, filterChannel, filterStatus, filterDate, filterRecords,
+                recordPage, filteredRecords, paginatedRecords, recordTotalPages, recordVisiblePages, searchText, filterChannel, filterStatus, filterDate, filterDateStart, filterDateEnd, filterRecords,
                 openRecordModal, openRecordDetail, confirmDeleteRecord, exportRecordsExcel, recordColumns,
                 // 配置记录
-                configPage, filteredConfigs, paginatedConfigs, configTotalPages, configVisiblePages, configFilterSource, configFilterDate, filterConfigs,
+                configPage, filteredConfigs, paginatedConfigs, configTotalPages, configVisiblePages, configFilterSource, configFilterDate, configFilterDateStart, configFilterDateEnd, filterConfigs,
                 openConfigModal, openConfigDetail, confirmDeleteConfig, exportConfigsExcel, configColumns,
                 // 会议记录
-                meetingPage, filteredMeetings, paginatedMeetings, meetingTotalPages, meetingVisiblePages, meetingFilterType, meetingFilterDate, filterMeetings,
+                meetingPage, filteredMeetings, paginatedMeetings, meetingTotalPages, meetingVisiblePages, meetingFilterType, meetingFilterDate, meetingFilterDateStart, meetingFilterDateEnd, filterMeetings,
                 openMeetingModal, openMeetingDetail, confirmDeleteMeeting, exportMeetingsExcel, meetingColumns,
                 // 通用
                 currentView, filterType, currentPage, drawerVisible, currentRow, detailTitle, editVisible, editType, editForm, editColumns, deleteVisible, deleteIndex, deleteType, showImportModal, toast, handleAttachment, handlePaste, handleImport,
