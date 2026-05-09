@@ -1837,8 +1837,8 @@
                         <template v-for="col in editColumns" :key="col.key">
                             <div class="form-item" :class="col.full?'full':''">
                                 <label>{{col.label}}</label>
-                                <!-- 客户搜索下拉（会话记录/配置记录/会议记录通用） -->
-                                <div v-if="['客户', '客户公司名称', '客户名称'].includes(col.key)" class="customer-select-wrap">
+                                <!-- 客户搜索下拉（会话记录/配置记录/会议记录通用；国际版客户名称直接文本输入） -->
+                                <div v-if="['客户', '客户公司名称', '客户名称'].includes(col.key) && currentView !== '华东区域-国际版客户'" class="customer-select-wrap">
                                     <div class="customer-select-input" :class="{open: customerDropdownOpen}" @click="toggleCustomerDropdown">
                                         <span class="text" :class="editForm[col.key] ? '' : 'placeholder'">{{editForm[col.key] || '请搜索选择客户'}}</span>
                                         <span class="actions">
