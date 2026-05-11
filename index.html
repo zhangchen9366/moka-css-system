@@ -584,6 +584,48 @@
         .detail-item.full-width span { white-space: pre-wrap; line-height: 1.6; word-break: break-word; }
         .remark-text { white-space: pre-wrap; word-break: break-word; }
 
+        /* ===== 详情抽屉附件区域 ===== */
+        .detail-attachment-wrap { grid-column: span 2; margin-top: 4px; }
+        .detail-attachment-wrap label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 10px; font-weight: 500; }
+        .attachment-gallery { display: flex; flex-wrap: wrap; gap: 10px; }
+        .attachment-img-card {
+            position: relative; border-radius: 10px; overflow: hidden;
+            border: 1px solid var(--border-strong); cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            background: var(--bg-light);
+        }
+        .attachment-img-card:hover { transform: scale(1.03); box-shadow: var(--shadow); }
+        .attachment-img-card img { display: block; width: 120px; height: 90px; object-fit: cover; }
+        .attachment-file-card {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 12px; border-radius: 8px;
+            border: 1px solid var(--border-strong);
+            background: var(--bg-light); font-size: 12px; color: var(--text-secondary);
+        }
+        .attachment-text { font-size: 13px; color: var(--text-secondary); padding: 8px 12px; background: var(--bg-light); border-radius: 8px; border: 1px solid var(--border); word-break: break-all; }
+        /* 图片灯箱 */
+        .lightbox-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+            z-index: 9999; display: flex; align-items: center; justify-content: center;
+        }
+        .lightbox-overlay img { max-width: 90vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 8px 40px rgba(0,0,0,0.6); }
+        .lightbox-close { position: absolute; top: 20px; right: 28px; font-size: 32px; color: #fff; cursor: pointer; line-height: 1; }
+        /* drawer 状态标签 */
+        .detail-status-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+        .detail-status-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+        }
+        .badge-resolved { background: rgba(16,185,129,0.15); color: #10b981; }
+        .badge-unresolved { background: rgba(239,68,68,0.15); color: #ef4444; }
+        .badge-following { background: rgba(245,158,11,0.15); color: #f59e0b; }
+        .badge-category { background: rgba(79,70,229,0.12); color: var(--primary); }
+        .badge-customer { background: rgba(6,182,212,0.12); color: var(--info); }
+        .badge-css { background: rgba(139,92,246,0.12); color: #8b5cf6; }
+        .detail-divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+        .detail-field-label { font-size: 11px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; }
+        .detail-field-value { font-size: 14px; color: var(--text-primary); word-break: break-all; line-height: 1.6; }
+
         /* ===== 面包屑 ===== */
         .breadcrumb { 
             display: flex; 
@@ -1828,14 +1870,78 @@
         <!-- 详情抽屉 -->
         <div class="drawer-overlay" v-if="drawerVisible" @click="drawerVisible=false"></div>
         <div class="drawer" v-if="drawerVisible">
-            <div class="drawer-header"><h3>{{detailTitle}}</h3><button class="modal-close" @click="drawerVisible=false">×</button></div>
+            <div class="drawer-header">
+                <h3>{{detailTitle}}</h3>
+                <button class="modal-close" @click="drawerVisible=false">×</button>
+            </div>
             <div class="drawer-body">
-                <div class="drawer-section">
-                    <h4>详细信息</h4>
-                    <div class="detail-grid">
-                        <div class="detail-item" v-for="(val,key) in currentRow" :key="key" v-show="val" :class="getDetailItemClass(key, val)"><label>{{getDetailLabel(key)}}</label><span :class="getDetailValueClass(key)">{{val}}</span></div>
+                <!-- 会话/配置/会议记录的专属详情样式 -->
+                <template v-if="currentRow && (currentRow.客户问题描述 !== undefined || currentRow.配置类型 !== undefined || currentRow['电话/会议主题'] !== undefined)">
+                    <!-- 状态标签行 -->
+                    <div class="detail-status-bar">
+                        <span v-if="currentRow.是否解决" class="detail-status-badge" :class="currentRow.是否解决==='已解决'?'badge-resolved':currentRow.是否解决==='未解决'?'badge-unresolved':'badge-following'">
+                            {{currentRow.是否解决==='已解决'?'✅':'❗'}} {{currentRow.是否解决}}
+                        </span>
+                        <span v-if="currentRow.问题类别" class="detail-status-badge badge-category">🏷️ {{currentRow.问题类别}}</span>
+                        <span v-if="currentRow.客户||currentRow.客户名称||currentRow.客户公司名称" class="detail-status-badge badge-customer">🏢 {{currentRow.客户||currentRow.客户名称||currentRow.客户公司名称}}</span>
+                        <span v-if="currentRow.CSS姓名||currentRow.CSS" class="detail-status-badge badge-css">👤 {{currentRow.CSS姓名||currentRow.CSS}}</span>
                     </div>
-                </div>
+                    <hr class="detail-divider">
+                    <!-- 基础字段 grid -->
+                    <div class="detail-grid" style="margin-bottom:18px">
+                        <template v-for="(val, key) in currentRow" :key="key">
+                            <div v-if="val && !['客户问题描述','解决方案','备注','附件','截图','是否解决','问题类别','客户','CSS姓名','客户名称','客户公司名称','CSS'].includes(key)"
+                                class="detail-item">
+                                <div class="detail-field-label">{{getDetailLabel(key)}}</div>
+                                <div class="detail-field-value">{{val}}</div>
+                            </div>
+                        </template>
+                    </div>
+                    <!-- 问题描述 / 主题 -->
+                    <template v-if="currentRow.客户问题描述 || currentRow['电话/会议主题']">
+                        <div class="detail-field-label">{{currentRow['电话/会议主题'] ? '📋 会议主题' : '❓ 问题描述'}}</div>
+                        <div style="background:rgba(79,70,229,0.06);border-left:3px solid var(--primary);border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:16px;font-size:14px;line-height:1.7;white-space:pre-wrap;word-break:break-word">
+                            {{currentRow.客户问题描述 || currentRow['电话/会议主题']}}
+                        </div>
+                    </template>
+                    <!-- 解决方案 -->
+                    <template v-if="currentRow.解决方案">
+                        <div class="detail-field-label">💡 解决方案</div>
+                        <div style="background:rgba(16,185,129,0.06);border-left:3px solid #10b981;border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:16px;font-size:14px;line-height:1.7;white-space:pre-wrap;word-break:break-word">
+                            {{currentRow.解决方案}}
+                        </div>
+                    </template>
+                    <!-- 备注 -->
+                    <template v-if="currentRow.备注">
+                        <div class="detail-field-label">📝 备注</div>
+                        <div style="background:var(--bg-light);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.7;white-space:pre-wrap;word-break:break-word;color:var(--text-secondary)">
+                            {{currentRow.备注}}
+                        </div>
+                    </template>
+                    <!-- 附件区域 -->
+                    <template v-if="currentRow.附件 || currentRow.截图">
+                        <div class="detail-field-label">📎 附件</div>
+                        <div class="attachment-gallery">
+                            <template v-for="(name, i) in (currentRow.附件||currentRow.截图||'').split(',')" :key="i">
+                                <div v-if="name.trim()" class="attachment-file-card">
+                                    <span>📄</span><span>{{name.trim()}}</span>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </template>
+                <!-- 其他视图通用详情 -->
+                <template v-else>
+                    <div class="drawer-section">
+                        <h4>详细信息</h4>
+                        <div class="detail-grid">
+                            <div class="detail-item" v-for="(val,key) in currentRow" :key="key" v-show="val" :class="getDetailItemClass(key, val)">
+                                <label>{{getDetailLabel(key)}}</label>
+                                <span :class="getDetailValueClass(key)">{{val}}</span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
             </div>
         </div>
         
@@ -6833,7 +6939,7 @@
                 myWeeklyHistory,
                 getCount, switchView, filterTable, filterHistory, getColWidth, getRowClass, getTypeClass, getStatusClass, truncate, openDetail, openAdd, openEdit, saveForm, confirmDelete, doDelete, exportCurrentExcel, exportAll, handleImport, showToast,
                 // 详情样式
-                getDetailItemClass, getDetailValueClass,
+                getDetailItemClass, getDetailValueClass, getDetailLabel,
                 // 字段管理
                 defaultColumns, customFields, fieldManageVisible, fieldManageView, openFieldManage, addField, removeField, moveField,
                 // 返回功能
