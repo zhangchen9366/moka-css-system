@@ -588,6 +588,12 @@
         .detail-attachment-wrap { grid-column: span 2; margin-top: 4px; }
         .detail-attachment-wrap label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 10px; font-weight: 500; }
         .attachment-gallery { display: flex; flex-wrap: wrap; gap: 10px; }
+        .attachment-img-thumb {
+            width: 88px; height: 66px; object-fit: cover; border-radius: 8px;
+            border: 1px solid var(--border-strong); cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s; background: var(--bg-light);
+        }
+        .attachment-img-thumb:hover { transform: scale(1.05); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
         .attachment-img-card {
             position: relative; border-radius: 10px; overflow: hidden;
             border: 1px solid var(--border-strong); cursor: pointer;
@@ -1922,9 +1928,14 @@
                     <template v-if="currentRow.附件 || currentRow.截图">
                         <div class="detail-field-label">📎 附件</div>
                         <div class="attachment-gallery">
-                            <template v-for="(name, i) in (currentRow.附件||currentRow.截图||'').split(',')" :key="i">
-                                <div v-if="name.trim()" class="attachment-file-card">
-                                    <span>📄</span><span>{{name.trim()}}</span>
+                            <template v-for="(item, i) in parseAttachments(currentRow.附件||currentRow.截图||'')" :key="i">
+                                <!-- 图片：显示缩略图，点击放大 -->
+                                <img v-if="String(item).startsWith('data:image')"
+                                     :src="item" class="attachment-img-thumb"
+                                     @click="openLightbox(item)" title="点击查看大图">
+                                <!-- 文件：显示文件卡片 -->
+                                <div v-else class="attachment-file-card">
+                                    <span>📄</span><span>{{item}}</span>
                                 </div>
                             </template>
                         </div>
@@ -1944,7 +1955,13 @@
                 </template>
             </div>
         </div>
-        
+
+        <!-- 图片放大预览（Lightbox） -->
+        <div v-if="lightboxVisible" class="lightbox-overlay" @click="onLightboxOverlay">
+            <img :src="lightboxImage" @click.stop alt="附件预览">
+            <button class="lightbox-close" @click="closeLightbox" title="关闭 (Esc)">×</button>
+        </div>
+
         <!-- 通用编辑弹窗 -->
         <div class="modal-overlay" v-if="editVisible" @click.self="closeCustomerDropdown(); editVisible=false">
             <div class="modal" @click.stop>
@@ -6786,31 +6803,66 @@
                 r.readAsText(file);
             };
             
+            // 附件字段解析辅助函数
+            // 支持新格式（JSON数组）和旧格式（逗号分隔文件名）
+            const parseAttachments = (str) => {
+                if (!str) return [];
+                const s = String(str).trim();
+                if (s.startsWith('[')) {
+                    try { return JSON.parse(s); } catch(e) { return []; }
+                }
+                return s.split(', ').map(s => s.trim()).filter(Boolean);
+            };
+            // 附件数组转存储格式
+            const formatAttachments = (arr) => JSON.stringify(arr || []);
+
             const handleAttachment = (e, key) => {
                 const files = e.target.files;
-                if (files.length > 0) {
-                    const fileNames = Array.from(files).map(f => f.name).join(', ');
-                    const current = editForm.value[key] || '';
-                    editForm.value[key] = current ? current + ', ' + fileNames : fileNames;
-                    showToast('已上传: ' + fileNames);
-                }
+                if (!files || files.length === 0) return;
+                const current = parseAttachments(editForm.value[key]);
+                let pending = files.length;
+                const done = () => {
+                    pending--;
+                    if (pending <= 0) {
+                        editForm.value[key] = formatAttachments(current);
+                        showToast('已上传 ' + files.length + ' 个文件');
+                    }
+                };
+                Array.from(files).forEach(file => {
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                            current.push(ev.target.result);
+                            done();
+                        };
+                        reader.onerror = () => done();
+                        reader.readAsDataURL(file);
+                    } else {
+                        current.push(file.name);
+                        done();
+                    }
+                });
+                e.target.value = '';
             };
             
             // 处理截图粘贴
             const handlePaste = (e, key) => {
                 const items = e.clipboardData?.items;
                 if (!items) return;
-                
                 for (let item of items) {
                     if (item.type.startsWith('image/')) {
                         const file = item.getAsFile();
                         if (file) {
-                            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-                            const fileName = `截图_${timestamp}.png`;
-                            const current = editForm.value[key] || '';
-                            editForm.value[key] = current ? current + ', ' + fileName : fileName;
-                            showToast('已粘贴截图: ' + fileName);
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                                const current = parseAttachments(editForm.value[key]);
+                                current.push(ev.target.result);
+                                editForm.value[key] = formatAttachments(current);
+                                showToast('已粘贴截图');
+                            };
+                            reader.readAsDataURL(file);
                         }
+                        return;
                     }
                 }
             };
@@ -6906,7 +6958,34 @@
                 customerDropdownOpen.value = false;
                 customerSearchText.value = '';
             };
-            
+
+            // 图片预览（Lightbox）
+            const lightboxVisible = ref(false);
+            const lightboxImage = ref('');
+            const openLightbox = (src) => {
+                lightboxImage.value = src;
+                lightboxVisible.value = true;
+                document.body.style.overflow = 'hidden';
+            };
+            const closeLightbox = () => {
+                lightboxVisible.value = false;
+                lightboxImage.value = '';
+                document.body.style.overflow = '';
+            };
+            // 点击遮罩关闭
+            const onLightboxOverlay = (e) => {
+                if (e.target === e.currentTarget) closeLightbox();
+            };
+            // ESC 键关闭
+            const handleLightboxKey = (e) => {
+                if (e.key === 'Escape' && lightboxVisible.value) closeLightbox();
+            };
+            onMounted(() => document.addEventListener('keydown', handleLightboxKey));
+            onUnmounted(() => {
+                document.removeEventListener('keydown', handleLightboxKey);
+                document.body.style.overflow = '';
+            });
+
             return {
                 // 用户
                 isLoggedIn, loginEmail, loginError, handleLogin, handleLogout, currentUser, teamMembers, cssList, categoryOptions,
@@ -6939,14 +7018,16 @@
                 myWeeklyHistory,
                 getCount, switchView, filterTable, filterHistory, getColWidth, getRowClass, getTypeClass, getStatusClass, truncate, openDetail, openAdd, openEdit, saveForm, confirmDelete, doDelete, exportCurrentExcel, exportAll, handleImport, showToast,
                 // 详情样式
-                getDetailItemClass, getDetailValueClass, getDetailLabel,
+                getDetailItemClass, getDetailValueClass, getDetailLabel, parseAttachments,
                 // 字段管理
                 defaultColumns, customFields, fieldManageVisible, fieldManageView, openFieldManage, addField, removeField, moveField,
                 // 返回功能
                 returnView, goBack,
                 // 客户搜索下拉
                 customerDropdownOpen, customerSearchText, filteredCustomerList, groupedCustomerList,
-                toggleCustomerDropdown, selectCustomer, clearCustomer, closeCustomerDropdown
+                toggleCustomerDropdown, selectCustomer, clearCustomer, closeCustomerDropdown,
+                // 图片预览
+                lightboxVisible, lightboxImage, openLightbox, closeLightbox, onLightboxOverlay
             };
         }
     }).mount('#app');
