@@ -1439,6 +1439,10 @@
                                         <option value="未解决">未解决</option>
                                         <option value="跟进中">跟进中</option>
                                     </select>
+                                    <select class="select" v-model="filterCss" @change="filterRecords">
+                                        <option value="">全部CSS</option>
+                                        <option v-for="m in teamMembers" :key="m.name" :value="m.name">{{m.name}}</option>
+                                    </select>
                                     <div class="date-range-filter">
                                         <span class="range-label">📅</span>
                                         <input type="date" v-model="filterDateStart" @change="filterRecords" placeholder="开始日期">
@@ -1498,6 +1502,10 @@
                                         <option value="">全部来源</option>
                                         <option value="客户">客户</option>
                                         <option value="CSM">CSM</option>
+                                    </select>
+                                    <select class="select" v-model="configFilterCss" @change="filterConfigs">
+                                        <option value="">全部CSS</option>
+                                        <option v-for="m in teamMembers" :key="m.name" :value="m.name">{{m.name}}</option>
                                     </select>
                                     <div class="date-range-filter">
                                         <span class="range-label">📅</span>
@@ -1559,6 +1567,10 @@
                                         <option value="">全部类型</option>
                                         <option value="电话">电话</option>
                                         <option value="会议">会议</option>
+                                    </select>
+                                    <select class="select" v-model="meetingFilterCss" @change="filterMeetings">
+                                        <option value="">全部CSS</option>
+                                        <option v-for="m in teamMembers" :key="m.name" :value="m.name">{{m.name}}</option>
                                     </select>
                                     <div class="date-range-filter">
                                         <span class="range-label">📅</span>
@@ -5926,6 +5938,7 @@
             const filterDate = ref('');
             const filterDateStart = ref('');
             const filterDateEnd = ref('');
+            const filterCss = ref('');
             
             // 配置记录数据
             const configs = ref(JSON.parse(localStorage.getItem('workConfigs') || '[]'));
@@ -5934,6 +5947,7 @@
             const configFilterDate = ref('');
             const configFilterDateStart = ref('');
             const configFilterDateEnd = ref('');
+            const configFilterCss = ref('');
             
             // 会议记录数据
             const meetings = ref(JSON.parse(localStorage.getItem('workMeetings') || '[]'));
@@ -5942,6 +5956,7 @@
             const meetingFilterDate = ref('');
             const meetingFilterDateStart = ref('');
             const meetingFilterDateEnd = ref('');
+            const meetingFilterCss = ref('');
             
             // 周报相关
             const weeklyReports = ref(JSON.parse(localStorage.getItem('weeklyReports') || '[]'));
@@ -6132,6 +6147,7 @@
                 let d = records.value;
                 if (searchText.value) { const s = searchText.value.toLowerCase(); d = d.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(s))); }
                 if (filterStatus.value) d = d.filter(r => r.是否解决 === filterStatus.value);
+                if (filterCss.value) d = d.filter(r => r.CSS姓名 === filterCss.value);
                 // 日期范围筛选（兼容旧单日filterDate）
                 if (filterDateStart.value) d = d.filter(r => r.提交时间 && r.提交时间 >= filterDateStart.value);
                 if (filterDateEnd.value) d = d.filter(r => r.提交时间 && r.提交时间 <= filterDateEnd.value);
@@ -6161,6 +6177,7 @@
                 let d = configs.value;
                 if (searchText.value) { const s = searchText.value.toLowerCase(); d = d.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(s))); }
                 if (configFilterSource.value) d = d.filter(r => r.配置来源 === configFilterSource.value);
+                if (configFilterCss.value) d = d.filter(r => r.CSS姓名 === configFilterCss.value);
                 // 日期范围筛选
                 if (configFilterDateStart.value) d = d.filter(r => r.日期 && r.日期 >= configFilterDateStart.value);
                 if (configFilterDateEnd.value) d = d.filter(r => r.日期 && r.日期 <= configFilterDateEnd.value);
@@ -6190,6 +6207,7 @@
                 let d = meetings.value;
                 if (searchText.value) { const s = searchText.value.toLowerCase(); d = d.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(s))); }
                 if (meetingFilterType.value) d = d.filter(r => r.沟通类型 === meetingFilterType.value);
+                if (meetingFilterCss.value) d = d.filter(r => r['电话/会议人员'] && r['电话/会议人员'].includes(meetingFilterCss.value));
                 // 日期范围筛选
                 if (meetingFilterDateStart.value) d = d.filter(r => r.日期 && r.日期 >= meetingFilterDateStart.value);
                 if (meetingFilterDateEnd.value) d = d.filter(r => r.日期 && r.日期 <= meetingFilterDateEnd.value);
@@ -7002,13 +7020,13 @@
                 todayRecordsCount, weekRecordCount, weekConfigHours, weekConfigCount, weekMeetingHours, weekMeetingCount,
                 filledMembers, isMemberFilledToday, getMemberTodayRecords, getMemberTodayConfig, getMemberTodayMeeting,
                 // 会话记录
-                recordPage, filteredRecords, paginatedRecords, recordTotalPages, recordVisiblePages, searchText, filterChannel, filterStatus, filterDate, filterDateStart, filterDateEnd, filterRecords,
+                recordPage, filteredRecords, paginatedRecords, recordTotalPages, recordVisiblePages, searchText, filterChannel, filterStatus, filterDate, filterDateStart, filterDateEnd, filterCss, filterRecords,
                 openRecordModal, openRecordDetail, confirmDeleteRecord, exportRecordsExcel, recordColumns,
                 // 配置记录
-                configPage, filteredConfigs, paginatedConfigs, configTotalPages, configVisiblePages, configFilterSource, configFilterDate, configFilterDateStart, configFilterDateEnd, filterConfigs,
+                configPage, filteredConfigs, paginatedConfigs, configTotalPages, configVisiblePages, configFilterSource, configFilterDate, configFilterDateStart, configFilterDateEnd, configFilterCss, filterConfigs,
                 openConfigModal, openConfigDetail, confirmDeleteConfig, exportConfigsExcel, configColumns,
                 // 会议记录
-                meetingPage, filteredMeetings, paginatedMeetings, meetingTotalPages, meetingVisiblePages, meetingFilterType, meetingFilterDate, meetingFilterDateStart, meetingFilterDateEnd, filterMeetings,
+                meetingPage, filteredMeetings, paginatedMeetings, meetingTotalPages, meetingVisiblePages, meetingFilterType, meetingFilterDate, meetingFilterDateStart, meetingFilterDateEnd, meetingFilterCss, filterMeetings,
                 openMeetingModal, openMeetingDetail, confirmDeleteMeeting, exportMeetingsExcel, meetingColumns,
                 // 通用
                 currentView, filterType, currentPage, drawerVisible, currentRow, detailTitle, editVisible, editType, editForm, editColumns, deleteVisible, deleteIndex, deleteType, showImportModal, toast, handleAttachment, handlePaste, handleImport,
