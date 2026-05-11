@@ -1479,6 +1479,7 @@
                                             <td :title="row.客户问题描述">{{truncate(row.客户问题描述,40)}}</td>
                                             <td @click.stop>
                                                 <button class="btn" style="background:none;color:#409eff;padding:4px 8px" @click="openRecordModal('edit', row)">编辑</button>
+                                                <button class="btn" style="background:none;color:#67c23a;padding:4px 8px" @click="copyRecord(row)">复制</button>
                                                 <button class="btn" style="background:none;color:#f56c6c;padding:4px 8px" @click="confirmDeleteRecord(row, idx)">删除</button>
                                             </td>
                                         </tr>
@@ -6719,6 +6720,28 @@
                 editVisible.value = true;
             };
             
+            // 复制会话记录（整条记录转为文本）
+            const copyRecord = (row) => {
+                const lines = [
+                    `【会话记录】`,
+                    `时间：${row.提交时间 || '-'}`,
+                    `客户：${row.客户 || '-'}`,
+                    `CSS：${row.CSS姓名 || '-'}`,
+                    `类别：${row.问题类别 || '-'}`,
+                    `状态：${row.是否解决 || '-'}`,
+                    ``,
+                    `【问题描述】`,
+                    row.客户问题描述 || '(无)',
+                    ``,
+                    `【解决方案】`,
+                    row.解决方案 || '(无)',
+                    ``,
+                    `【备注】`,
+                    row.备注 || '(无)'
+                ];
+                copyToClipboard(lines.join('\n'), '会话记录');
+            };
+            
             const openRecordDetail = (row) => {
                 currentRow.value = {...row};
                 detailTitle.value = `会话详情 - ${row.客户 || '未知'}`;
@@ -7053,7 +7076,7 @@
                 filledMembers, isMemberFilledToday, getMemberTodayRecords, getMemberTodayConfig, getMemberTodayMeeting,
                 // 会话记录
                 recordPage, filteredRecords, paginatedRecords, recordTotalPages, recordVisiblePages, searchText, filterChannel, filterStatus, filterDate, filterDateStart, filterDateEnd, filterCss, filterRecords,
-                openRecordModal, openRecordDetail, confirmDeleteRecord, exportRecordsExcel, recordColumns,
+                openRecordModal, openRecordDetail, copyRecord, confirmDeleteRecord, exportRecordsExcel, recordColumns,
                 // 配置记录
                 configPage, filteredConfigs, paginatedConfigs, configTotalPages, configVisiblePages, configFilterSource, configFilterDate, configFilterDateStart, configFilterDateEnd, configFilterCss, filterConfigs,
                 openConfigModal, openConfigDetail, confirmDeleteConfig, exportConfigsExcel, configColumns,
