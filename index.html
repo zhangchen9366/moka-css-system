@@ -2125,7 +2125,7 @@
     <script src="vue.global.prod.js"></script>
     <script src="xlsx.full.min.js"></script>
     <script>
-    const {createApp, ref, computed} = Vue;
+    const {createApp, ref, computed, onMounted, onUnmounted} = Vue;
     createApp({
         setup() {
             // ===== JSONBin 云端同步配置 =====
