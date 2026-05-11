@@ -655,6 +655,17 @@
             background: rgba(59, 130, 246, 0.05);
             color: var(--primary-light);
         }
+        .attachment-upload:focus { outline: none; }
+        .attachment-upload:focus .upload-label {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.08);
+            color: var(--primary-light);
+            box-shadow: 0 0 0 3px rgba(79,70,229,0.15);
+        }
+        .paste-hint {
+            display: block; margin-top: 6px; font-size: 11px;
+            color: var(--text-muted); text-align: center;
+        }
         .upload-icon { font-size: 20px; }
         .file-preview {
             display: block;
@@ -1863,12 +1874,13 @@
                                     <option value="">请选择</option>
                                     <option v-for="opt in col.options" :key="opt" :value="opt">{{opt}}</option>
                                 </select>
-                                <div v-else-if="col.isAttachment" class="attachment-upload">
-                                    <input type="file" @change="handleAttachment($event, col.key)" @paste="handlePaste($event, col.key)" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" :id="'file-'+col.key">
+                                <div v-else-if="col.isAttachment" class="attachment-upload" tabindex="0" @paste="handlePaste($event, col.key)">
+                                    <input type="file" @change="handleAttachment($event, col.key)" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" :id="'file-'+col.key">
                                     <label :for="'file-'+col.key" class="upload-label">
                                         <span class="upload-icon">📎</span>
-                                        <span>点击上传 / 截图粘贴</span>
+                                        <span>点击上传文件</span>
                                     </label>
+                                    <span class="paste-hint">💡 点击此区域后可直接 Ctrl+V 粘贴截图</span>
                                     <span v-if="editForm[col.key]" class="file-preview">{{editForm[col.key]}}</span>
                                 </div>
                                 <span v-else-if="col.isAttachment && editForm[col.key]" style="color:#67c23a;font-size:12px">已上传文件</span>
@@ -6596,14 +6608,15 @@
                 {key:'电话/会议主题', label:'主题', full:true, isTextarea:true},
                 {key:'电话/会议人员', label:'参会人员', full:true},
                 {key:'电话/会议总时长（min）', label:'时长(min)', full:false},
-                {key:'备注', label:'备注', full:true, isTextarea:true, isRemark:true}
+                {key:'备注', label:'备注', full:true, isTextarea:true, isRemark:true},
+                {key:'附件', label:'附件', full:true, isAttachment:true}
             ];
             
             const openMeetingModal = (type, row = null) => {
                 editType.value = type;
                 if (type === 'add') {
                     const today = new Date().toISOString().split('T')[0];
-                    editForm.value = { 日期: today, 客户名称:'', 沟通类型:'电话', '电话/会议主题':'', '电话/会议人员': currentUser.value.name, '电话/会议总时长（min）':'', '备注':'' };
+                    editForm.value = { 日期: today, 客户名称:'', 沟通类型:'电话', '电话/会议主题':'', '电话/会议人员': currentUser.value.name, '电话/会议总时长（min）':'', '备注':'', '附件':'' };
                 } else {
                     editForm.value = {...row};
                 }
