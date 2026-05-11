@@ -1926,14 +1926,20 @@
                     </div>
                     <!-- 问题描述 / 主题 -->
                     <template v-if="currentRow.客户问题描述 || currentRow['电话/会议主题']">
-                        <div class="detail-field-label">{{currentRow['电话/会议主题'] ? '📋 会议主题' : '❓ 问题描述'}}</div>
+                        <div class="detail-field-label" style="display:flex;align-items:center;justify-content:space-between">
+                            <span>{{currentRow['电话/会议主题'] ? '📋 会议主题' : '❓ 问题描述'}}</span>
+                            <button @click.stop="copyToClipboard(currentRow.客户问题描述 || currentRow['电话/会议主题'], '问题描述')" style="background:none;border:1px solid #ddd;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:12px;color:#666">📋 复制</button>
+                        </div>
                         <div style="background:rgba(79,70,229,0.06);border-left:3px solid var(--primary);border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:16px;font-size:14px;line-height:1.7;white-space:pre-wrap;word-break:break-word">
                             {{currentRow.客户问题描述 || currentRow['电话/会议主题']}}
                         </div>
                     </template>
                     <!-- 解决方案 -->
                     <template v-if="currentRow.解决方案">
-                        <div class="detail-field-label">💡 解决方案</div>
+                        <div class="detail-field-label" style="display:flex;align-items:center;justify-content:space-between">
+                            <span>💡 解决方案</span>
+                            <button @click.stop="copyToClipboard(currentRow.解决方案, '解决方案')" style="background:none;border:1px solid #ddd;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:12px;color:#666">📋 复制</button>
+                        </div>
                         <div style="background:rgba(16,185,129,0.06);border-left:3px solid #10b981;border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:16px;font-size:14px;line-height:1.7;white-space:pre-wrap;word-break:break-word">
                             {{currentRow.解决方案}}
                         </div>
@@ -6365,6 +6371,23 @@
             
             const showToast = (msg, type='success') => { toast.value = {show:true, msg, type}; setTimeout(() => toast.value.show = false, 2500); };
             
+            // 复制文本到剪贴板
+            const copyToClipboard = (text, label='内容') => {
+                if (!text) { showToast('无内容可复制', 'error'); return; }
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast(label + '已复制到剪贴板', 'success');
+                }).catch(() => {
+                    // 降级方案
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    showToast(label + '已复制到剪贴板', 'success');
+                });
+            };
+            
             // 数据持久化
             const saved = localStorage.getItem('customerData');
             if (saved) { try { allData.value = JSON.parse(saved); } catch(e) {} }
@@ -7043,7 +7066,7 @@
                 columns, tableData, filteredData, paginatedData, totalPages, visiblePages,
                 // 周报历史
                 myWeeklyHistory,
-                getCount, switchView, filterTable, filterHistory, getColWidth, getRowClass, getTypeClass, getStatusClass, truncate, openDetail, openAdd, openEdit, saveForm, confirmDelete, doDelete, exportCurrentExcel, exportAll, handleImport, showToast,
+                getCount, switchView, filterTable, filterHistory, getColWidth, getRowClass, getTypeClass, getStatusClass, truncate, openDetail, openAdd, openEdit, saveForm, confirmDelete, doDelete, exportCurrentExcel, exportAll, handleImport, showToast, copyToClipboard,
                 // 详情样式
                 getDetailItemClass, getDetailValueClass, getDetailLabel, parseAttachments,
                 // 字段管理
