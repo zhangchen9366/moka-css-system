@@ -1300,6 +1300,26 @@
     </style>
 </head>
 <body>
+    <!-- CDN加载失败时的备用提示 -->
+    <noscript>
+        <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui;background:#f1f5f9;padding:20px">
+            <div style="background:#fff;padding:40px;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.1);text-align:center;max-width:500px">
+                <h2 style="color:#ef4444;margin-bottom:16px">⚠️ 需要启用 JavaScript</h2>
+                <p style="color:#64748b;margin-bottom:12px">本项目需要 JavaScript 才能正常运行</p>
+            </div>
+        </div>
+    </noscript>
+    
+    <!-- Vue加载失败提示（CDN被墙时显示） -->
+    <div id="vue-error" style="display:none;position:fixed;inset:0;background:#f1f5f9;z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px">
+        <div style="background:#fff;padding:40px;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.1);text-align:center;max-width:520px">
+            <h2 style="color:#ef4444;margin-bottom:16px">⚠️ 资源加载失败</h2>
+            <p style="color:#64748b;margin-bottom:12px">Vue.js CDN 加载失败，可能是网络问题</p>
+            <p style="color:#64748b;margin-bottom:20px;font-size:13px">请尝试：<br>1. 检查网络连接<br>2. 使用VPN或更换网络环境</p>
+            <button onclick="location.reload()" style="background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;border:none;padding:12px 32px;border-radius:10px;font-size:15px;cursor:pointer">🔄 重新加载</button>
+        </div>
+    </div>
+    
     <div id="app">
         <div v-if="!isLoggedIn" class="login-page">
             <div class="login-box">
@@ -2116,6 +2136,12 @@
     <script src="https://cdn.bootcdn.net/ajax/libs/vue/3.4.15/vue.global.prod.js"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
+    // 检测Vue是否加载成功
+    if (typeof Vue === 'undefined') {
+        document.getElementById('vue-error').style.display = 'flex';
+        document.getElementById('app').style.display = 'none';
+        throw new Error('Vue CDN 加载失败');
+    }
     const {createApp, ref, computed} = Vue;
     createApp({
         setup() {
