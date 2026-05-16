@@ -2321,9 +2321,9 @@
         </div>
 
         <!-- 通用编辑弹窗 -->
-        <div class="modal-overlay" v-if="editVisible" @click.self="closeCustomerDropdown(); editVisible=false">
+        <div class="modal-overlay" v-if="editVisible" @click.self="editVisible=false">
             <div class="modal" @click.stop>
-                <div class="modal-header"><h3>{{editType==='add'?'新增记录':'编辑记录'}}</h3><button class="modal-close" @click="closeCustomerDropdown(); editVisible=false">×</button></div>
+                <div class="modal-header"><h3>{{editType==='add'?'新增记录':'编辑记录'}}</h3><button class="modal-close" @click="editVisible=false">×</button></div>
                 <div class="modal-body">
                     <div class="form-grid">
                         <template v-for="col in editColumns" :key="col.key">
