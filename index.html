@@ -169,6 +169,22 @@
             background: rgba(59, 130, 246, 0.2);
             color: var(--primary-light);
         }
+        /* 子菜单（二级菜单）样式 */
+        .nav-sub-group { overflow: hidden; }
+        .nav-sub-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 20px 8px 38px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+            font-size: 12px;
+            color: var(--text-muted);
+            position: relative;
+        }
+        .nav-sub-item:hover { background: rgba(59, 130, 246, 0.07); color: var(--primary-light); }
+        .nav-sub-item.active { background: rgba(59, 130, 246, 0.12); color: var(--primary-light); border-left-color: var(--primary); font-weight: 600; }
+        .nav-sub-item .sub-icon { width: 16px; height: 16px; margin-right: 8px; font-size: 13px; text-align: center; }
 
         /* ===== 主内容区 ===== */
         .main-content { 
@@ -1348,6 +1364,10 @@
                 <div class="nav-group">
                     <div class="nav-title">业务追踪</div>
                     <div class="nav-item" :class="{active: currentView === '商机推进情况'}" @click="switchView('商机推进情况')"><span class="icon">🚀</span><span class="text">商机推进</span><span class="badge count">{{getCount('商机推进情况')}}</span></div>
+                    <div class="nav-sub-group">
+                        <div class="nav-sub-item" :class="{active: currentView === '商机人员统计'}" @click="switchView('商机人员统计')"><span class="sub-icon">👥</span><span>人员统计</span></div>
+                        <div class="nav-sub-item" :class="{active: currentView === '商机进展概览'}" @click="switchView('商机进展概览')"><span class="sub-icon">📊</span><span>进展概览</span></div>
+                    </div>
                     <div class="nav-item" :class="{active: currentView === '口碑记录'}" @click="switchView('口碑记录')"><span class="icon">⭐</span><span class="text">口碑记录</span><span class="badge count">{{getCount('口碑记录')}}</span></div>
                     <div class="nav-item" :class="{active: currentView === 'EVA激活情况跟踪'}" @click="switchView('EVA激活情况跟踪')"><span class="icon">🤖</span><span class="text">EVA激活跟踪</span><span class="badge count">{{getCount('EVA激活情况跟踪')}}</span></div>
                     <div class="nav-item" :class="{active: currentView === '实施中支持客户'}" @click="switchView('实施中支持客户')"><span class="icon">🔧</span><span class="text">实施中支持</span><span class="badge count">{{getCount('实施中支持客户')}}</span></div>
@@ -1822,6 +1842,94 @@
                             <div v-else class="empty-state">
                                 <div class="icon">📋</div>
                                 <div class="text">该周暂无周报数据</div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                
+                <!-- 商机人员统计 -->
+                <template v-else-if="currentView === '商机人员统计'">
+                    <div class="breadcrumb"><a @click="switchView('商机推进情况')">商机推进</a><span>/</span><span>人员统计</span></div>
+                    <div class="panel">
+                        <div class="panel-header"><span class="panel-title">👥 人员商机统计</span><span style="font-size:12px;color:#909399;margin-left:12px">每位CSS负责的商机条数</span></div>
+                        <div class="panel-body">
+                            <!-- 统计卡片 -->
+                            <div class="stats-grid" style="margin-bottom:24px">
+                                <div class="stat-card" v-for="item in bizPersonStats" :key="item.name">
+                                    <div class="icon-wrap" style="background:#ecf5ff">👤</div>
+                                    <div class="label">{{item.name}}</div>
+                                    <div class="value">{{item.count}}</div>
+                                    <div class="sub">条商机</div>
+                                </div>
+                            </div>
+                            <!-- 柱状图 -->
+                            <div style="background:var(--bg-card);border-radius:12px;padding:24px;margin-bottom:16px">
+                                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:16px">📊 商机数量分布图</div>
+                                <div style="display:flex;align-items:flex-end;gap:12px;height:180px;padding-bottom:8px;border-bottom:1px solid var(--border-color);overflow-x:auto">
+                                    <div v-for="item in bizPersonStats" :key="item.name" style="display:flex;flex-direction:column;align-items:center;min-width:60px;flex:1;max-width:90px">
+                                        <div style="font-size:12px;font-weight:700;color:var(--primary-light);margin-bottom:4px">{{item.count}}</div>
+                                        <div :style="{height: (item.count / bizPersonStatsMax * 140 + 12) + 'px', background: 'linear-gradient(180deg,#3b82f6,#6366f1)', borderRadius:'6px 6px 0 0', width:'100%', minHeight:'12px', transition:'height 0.6s ease'}"></div>
+                                        <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;text-align:center">{{item.name}}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- 类型分布 -->
+                            <div style="background:var(--bg-card);border-radius:12px;padding:24px">
+                                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:16px">🏷️ 推进类型分布</div>
+                                <div style="display:flex;gap:12px;flex-wrap:wrap">
+                                    <div v-for="t in bizTypeStats" :key="t.type" style="flex:1;min-width:140px;background:var(--bg-hover);border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center">
+                                        <span style="font-size:13px;color:var(--text-primary)">{{t.type}}</span>
+                                        <span style="font-size:18px;font-weight:700;color:var(--primary-light)">{{t.count}}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                
+                <!-- 商机进展概览 -->
+                <template v-else-if="currentView === '商机进展概览'">
+                    <div class="breadcrumb"><a @click="switchView('商机推进情况')">商机推进</a><span>/</span><span>进展概览</span></div>
+                    <div class="panel">
+                        <div class="panel-header"><span class="panel-title">📊 当前进展概览</span><span style="font-size:12px;color:#909399;margin-left:12px">各进展阶段商机分布</span></div>
+                        <div class="panel-body">
+                            <!-- 进展阶段汇总卡片 -->
+                            <div class="stats-grid" style="margin-bottom:24px">
+                                <div class="stat-card" v-for="s in bizStageStats" :key="s.stage">
+                                    <div class="icon-wrap" :style="{background: s.bg}">{{s.icon}}</div>
+                                    <div class="label" style="font-size:11px">{{s.stage}}</div>
+                                    <div class="value">{{s.count}}</div>
+                                    <div class="sub">条</div>
+                                </div>
+                            </div>
+                            <!-- 进展漏斗/时间线图 -->
+                            <div style="background:var(--bg-card);border-radius:12px;padding:24px;margin-bottom:16px">
+                                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:20px">🎯 进展阶段分布图</div>
+                                <div v-for="(s, idx) in bizStageSorted" :key="s.stage" style="margin-bottom:14px">
+                                    <div style="display:flex;align-items:center;margin-bottom:5px">
+                                        <span style="font-size:12px;color:var(--text-secondary);width:140px;flex-shrink:0">{{s.icon}} {{s.stage}}</span>
+                                        <div style="flex:1;background:var(--bg-hover);border-radius:6px;height:22px;overflow:hidden">
+                                            <div :style="{width: (s.count / bizStageSortedMax * 100) + '%', background: s.color, height:'100%', borderRadius:'6px', transition:'width 0.8s ease', minWidth: s.count > 0 ? '28px' : '0'}"></div>
+                                        </div>
+                                        <span style="font-size:13px;font-weight:700;color:var(--primary-light);margin-left:10px;width:32px;text-align:right">{{s.count}}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- 详细列表（按进展阶段分组） -->
+                            <div style="background:var(--bg-card);border-radius:12px;padding:24px">
+                                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:16px">📋 各阶段商机明细</div>
+                                <div v-for="s in bizStageSorted" :key="'detail-'+s.stage" style="margin-bottom:20px">
+                                    <div style="display:flex;align-items:center;margin-bottom:8px;padding:8px 12px;background:var(--bg-hover);border-radius:8px">
+                                        <span style="font-size:13px;font-weight:600;color:var(--text-primary)">{{s.icon}} {{s.stage}}</span>
+                                        <span style="margin-left:8px;font-size:12px;color:#fff;background:var(--primary);border-radius:10px;padding:1px 8px">{{s.count}}</span>
+                                    </div>
+                                    <div style="padding-left:12px;display:flex;flex-wrap:wrap;gap:8px">
+                                        <div v-for="item in s.items" :key="item.客户名称+item.负责CSS" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer" @click="switchView('商机推进情况')">
+                                            <div style="font-weight:600;color:var(--text-primary)">{{item.客户名称}}</div>
+                                            <div style="color:var(--text-muted);margin-top:2px">{{item.负责CSS}} · {{item.推进类型}}</div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -6531,6 +6639,64 @@
             };
             
             const filterTable = () => { currentPage.value = 1; };
+
+            // ===== 商机统计计算属性 =====
+            const bizData = computed(() => allData.value['商机推进情况'] || []);
+            
+            // 人员统计
+            const bizPersonStats = computed(() => {
+                const map = {};
+                bizData.value.forEach(item => {
+                    const name = item['负责CSS'] || '未知';
+                    map[name] = (map[name] || 0) + 1;
+                });
+                return Object.entries(map).map(([name, count]) => ({name, count})).sort((a,b) => b.count - a.count);
+            });
+            const bizPersonStatsMax = computed(() => Math.max(...bizPersonStats.value.map(i => i.count), 1));
+            
+            // 推进类型统计
+            const bizTypeStats = computed(() => {
+                const map = {};
+                bizData.value.forEach(item => {
+                    const t = item['推进类型'] || '未分类';
+                    map[t] = (map[t] || 0) + 1;
+                });
+                return Object.entries(map).map(([type, count]) => ({type, count})).sort((a,b) => b.count - a.count);
+            });
+            
+            // 进展阶段统计（归类）
+            const STAGE_CONFIG = [
+                { key: '合同', label: '合同中', icon: '📝', bg: '#ecf5ff', color: '#3b82f6' },
+                { key: '已开通', label: '已开通/完成', icon: '✅', bg: '#f0f9eb', color: '#22c55e' },
+                { key: '试用', label: '试用支持中', icon: '🧪', bg: '#fdf6ec', color: '#f59e0b' },
+                { key: '跟进', label: 'CSM跟进中', icon: '🔄', bg: '#f5f0ff', color: '#8b5cf6' },
+                { key: '评估', label: '评估中', icon: '🔍', bg: '#fff7ed', color: '#f97316' },
+                { key: '决策', label: '等待决策', icon: '⏳', bg: '#fef2f2', color: '#ef4444' },
+                { key: '无预算', label: '无预算/暂缓', icon: '💤', bg: '#f9fafb', color: '#9ca3af' },
+                { key: 'other', label: '其他', icon: '📌', bg: '#f0f4ff', color: '#6366f1' },
+            ];
+            const bizStageStats = computed(() => {
+                const counts = {};
+                const items = {};
+                STAGE_CONFIG.forEach(s => { counts[s.key] = 0; items[s.key] = []; });
+                bizData.value.forEach(item => {
+                    const progress = (item['当前进展'] || '').toLowerCase();
+                    let matched = false;
+                    if (/合同/.test(progress)) { counts['合同']++; items['合同'].push(item); matched = true; }
+                    else if (/已开通|已收取|完成/.test(progress)) { counts['已开通']++; items['已开通'].push(item); matched = true; }
+                    else if (/试用/.test(progress)) { counts['试用']++; items['试用'].push(item); matched = true; }
+                    else if (/跟进/.test(progress)) { counts['跟进']++; items['跟进'].push(item); matched = true; }
+                    else if (/评估|二开/.test(progress)) { counts['评估']++; items['评估'].push(item); matched = true; }
+                    else if (/决策|反馈|等待|抉择/.test(progress)) { counts['决策']++; items['决策'].push(item); matched = true; }
+                    else if (/无预算|没钱|暂缓/.test(progress)) { counts['无预算']++; items['无预算'].push(item); matched = true; }
+                    if (!matched) { counts['other']++; items['other'].push(item); }
+                });
+                return STAGE_CONFIG.map(s => ({
+                    ...s, stage: s.label, count: counts[s.key], items: items[s.key]
+                }));
+            });
+            const bizStageSorted = computed(() => [...bizStageStats.value].filter(s => s.count > 0).sort((a,b) => b.count - a.count));
+            const bizStageSortedMax = computed(() => Math.max(...bizStageSorted.value.map(i => i.count), 1));
             const filterHistory = () => {};
             const getColWidth = (c) => {
                 if (!c) return null;
@@ -7091,7 +7257,9 @@
                 customerDropdownOpen, customerSearchText, filteredCustomerList, groupedCustomerList,
                 toggleCustomerDropdown, selectCustomer, clearCustomer, closeCustomerDropdown,
                 // 图片预览
-                lightboxVisible, lightboxImage, openLightbox, closeLightbox, onLightboxOverlay
+                lightboxVisible, lightboxImage, openLightbox, closeLightbox, onLightboxOverlay,
+                // 商机统计
+                bizPersonStats, bizPersonStatsMax, bizTypeStats, bizStageStats, bizStageSorted, bizStageSortedMax
             };
         }
     }).mount('#app');
