@@ -1994,11 +1994,8 @@
                                             transition: 'all 0.6s cubic-bezier(.4,0,.2,1)',
                                             boxShadow: item.count === bizPersonStatsMax ? '0 4px 16px rgba(99,102,241,0.4)' : '0 2px 8px rgba(59,130,246,0.2)',
                                             position: 'relative'
-                                        }" 
-                                        @mouseover="hoveredBar = idx" @mouseleave="hoveredBar = null"
+                                        }"
                                         :title="item.name + ': ' + item.count + ' 条商机'">
-                                            <!-- 悬浮提示 -->
-                                            <div v-if="hoveredBar === idx" style="position:absolute;top:-32px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;font-size:11px;padding:3px 8px;border-radius:6px;white-space:nowrap;pointer-events:none">{{item.name}}：{{item.count}}条</div>
                                         </div>
                                         <div style="font-size:11px;color:var(--text-secondary);margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;text-align:center;font-weight:500">{{item.name}}</div>
                                     </div>
