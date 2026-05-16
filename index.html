@@ -206,6 +206,75 @@
         }
         .nav-arrow:hover { background: rgba(59,130,246,0.1); color: var(--primary-light); }
         .nav-arrow.expanded { transform: rotate(180deg); }
+        
+        /* 商机统计卡片 hover 效果 */
+        .biz-type-card {
+            background: linear-gradient(135deg, var(--bg-card), var(--bg-hover));
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px 18px;
+            cursor: pointer;
+            transition: all 0.25s;
+            position: relative;
+            overflow: hidden;
+        }
+        .biz-type-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59,130,246,0.15);
+        }
+        .biz-stage-card {
+            flex: 1;
+            min-width: 120px;
+            max-width: 180px;
+            background: var(--bg-card);
+            border-radius: 14px;
+            padding: 16px 18px;
+            cursor: pointer;
+            transition: all 0.25s;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+        .biz-stage-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59,130,246,0.12);
+        }
+        .biz-stage-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 14px;
+            cursor: pointer;
+            padding: 6px 8px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+        .biz-stage-bar:hover {
+            background: var(--bg-hover);
+        }
+        .biz-stage-detail {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            background: var(--bg-hover);
+            border-radius: 10px;
+            cursor: pointer;
+            margin-bottom: 12px;
+            transition: background 0.2s;
+        }
+        .biz-stage-detail:hover {
+            background: var(--border-color);
+        }
+        .biz-item-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px 16px;
+            transition: all 0.2s;
+        }
+        .biz-item-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(59,130,246,0.15);
+        }
 
         /* ===== 主内容区 ===== */
         .main-content { 
@@ -1926,7 +1995,7 @@
                                             boxShadow: item.count === bizPersonStatsMax ? '0 4px 16px rgba(99,102,241,0.4)' : '0 2px 8px rgba(59,130,246,0.2)',
                                             position: 'relative'
                                         }" 
-                                        @mouseover="hoveredBar=idx" @mouseleave="hoveredBar=null"
+                                        @mouseover="hoveredBar = idx" @mouseleave="hoveredBar = null"
                                         :title="item.name + ': ' + item.count + ' 条商机'">
                                             <!-- 悬浮提示 -->
                                             <div v-if="hoveredBar === idx" style="position:absolute;top:-32px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;font-size:11px;padding:3px 8px;border-radius:6px;white-space:nowrap;pointer-events:none">{{item.name}}：{{item.count}}条</div>
@@ -1941,10 +2010,7 @@
                             <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:4px">🏷️ 推进类型分布</div>
                             <div style="font-size:12px;color:var(--text-muted);margin-bottom:20px">点击类型卡片可穿透查看对应类型的商机</div>
                             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">
-                                <div v-for="t in bizTypeStats" :key="t.type" @click="drillToBizType(t.type)" 
-                                     style="background:linear-gradient(135deg,var(--bg-card),var(--bg-hover));border:1px solid var(--border-color);border-radius:12px;padding:16px 18px;cursor:pointer;transition:all 0.25s;position:relative;overflow:hidden"
-                                     @mouseover="$event.currentTarget.style.transform='translateY(-2px)';$event.currentTarget.style.boxShadow='0 6px 20px rgba(59,130,246,0.15)'" 
-                                     @mouseleave="$event.currentTarget.style.transform='';$event.currentTarget.style.boxShadow=''">
+                                <div v-for="t in bizTypeStats" :key="t.type" @click="drillToBizType(t.type)" class="biz-type-card">
                                     <div style="font-size:20px;margin-bottom:8px">{{t.count >= 5 ? '🌟' : t.count >= 2 ? '⭐' : '💫'}}</div>
                                     <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:4px">{{t.type}}</div>
                                     <div style="font-size:22px;font-weight:800;color:var(--primary-light)">{{t.count}}<span style="font-size:12px;font-weight:400;color:var(--text-muted);margin-left:2px">条</span></div>
@@ -1960,10 +2026,7 @@
                     <div class="panel" style="background:transparent;box-shadow:none">
                         <!-- 顶部阶段汇总卡片 -->
                         <div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap">
-                            <div v-for="s in bizStageSorted" :key="s.stage" @click="drillToStage(s)"
-                                 style="flex:1;min-width:120px;max-width:180px;background:var(--bg-card);border-radius:14px;padding:16px 18px;cursor:pointer;transition:all 0.25s;border:1px solid var(--border-color);position:relative;overflow:hidden"
-                                 @mouseover="$event.currentTarget.style.transform='translateY(-2px)';$event.currentTarget.style.boxShadow='0 6px 20px rgba(59,130,246,0.12)'"
-                                 @mouseleave="$event.currentTarget.style.transform='';$event.currentTarget.style.boxShadow=''">
+                            <div v-for="s in bizStageSorted" :key="s.stage" @click="drillToStage(s)" class="biz-stage-card">
                                 <!-- 左侧色条 -->
                                 <div :style="{position:'absolute',left:0,top:0,bottom:0,width:'4px',background:s.color,borderRadius:'14px 0 0 14px'}"></div>
                                 <div style="font-size:18px;margin-bottom:6px">{{s.icon}}</div>
@@ -1979,10 +2042,7 @@
                                     <div style="font-size:12px;color:var(--text-muted);margin-top:4px">点击色条可穿透查看该阶段商机</div>
                                 </div>
                             </div>
-                            <div v-for="(s, idx) in bizStageSorted" :key="s.stage" @click="drillToStage(s)" 
-                                 style="display:flex;align-items:center;margin-bottom:14px;cursor:pointer;padding:6px 8px;border-radius:8px;transition:background 0.2s"
-                                 @mouseover="$event.currentTarget.style.background='var(--bg-hover)'"
-                                 @mouseleave="$event.currentTarget.style.background=''">
+                            <div v-for="(s, idx) in bizStageSorted" :key="s.stage" @click="drillToStage(s)" class="biz-stage-bar">
                                 <span style="font-size:13px;color:var(--text-secondary);width:140px;flex-shrink:0;font-weight:500">{{s.icon}} {{s.stage}}</span>
                                 <div style="flex:1;background:var(--bg-hover);border-radius:8px;height:26px;overflow:hidden;position:relative">
                                     <div :style="{width: (s.count / bizStageSortedMax * 100) + '%', background: s.color, height:'100%', borderRadius:'8px', transition:'width 0.8s cubic-bezier(.4,0,.2,1)', minWidth: s.count > 0 ? '32px' : '0', display:'flex',alignItems:'center',justifyContent:'flex-end',paddingRight:'8px',fontSize:'11px',fontWeight:'700',color:'#fff'}">
@@ -1996,10 +2056,7 @@
                             <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:4px">📋 阶段商机明细</div>
                             <div style="font-size:12px;color:var(--text-muted);margin-bottom:20px">点击卡片可穿透查看完整商机列表</div>
                             <div v-for="s in bizStageSorted" :key="'detail-'+s.stage" style="margin-bottom:24px">
-                                <div @click="drillToStage(s)" 
-                                     style="display:flex;align-items:center;padding:10px 16px;background:var(--bg-hover);border-radius:10px;cursor:pointer;margin-bottom:12px;transition:background 0.2s"
-                                     @mouseover="$event.currentTarget.style.background='var(--border-color)'"
-                                     @mouseleave="$event.currentTarget.style.background='var(--bg-hover)'">
+                                <div @click="drillToStage(s)" class="biz-stage-detail">
                                     <span :style="{fontSize:'14px',marginRight:'8px'}">{{s.icon}}</span>
                                     <span style="font-size:13px;font-weight:600;color:var(--text-primary)">{{s.stage}}</span>
                                     <span :style="{marginLeft:'auto',fontSize:'11px',color:'#fff',background:s.color,padding:'2px 10px',borderRadius:'10px',fontWeight:'600'}">{{s.count}} 条</span>
@@ -2007,9 +2064,7 @@
                                 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
                                     <div v-for="item in s.items" :key="item.客户名称+item.负责CSS" 
                                          @click="switchView('商机推进情况')"
-                                         style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;padding:12px 14px;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden"
-                                         @mouseover="$event.currentTarget.style.borderColor='var(--primary)';$event.currentTarget.style.boxShadow='0 4px 12px rgba(59,130,246,0.15)'"
-                                         @mouseleave="$event.currentTarget.style.borderColor='var(--border-color)';$event.currentTarget.style.boxShadow=''">
+                                         class="biz-item-card">
                                         <div style="font-size:12px;font-weight:600;color:var(--text-primary);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{item.客户名称}}</div>
                                         <div style="display:flex;align-items:center;gap:6px">
                                             <span style="font-size:10px;background:var(--bg-hover);color:var(--text-muted);padding:2px 6px;border-radius:4px">{{item.负责CSS}}</span>
@@ -2042,7 +2097,7 @@
                                         <span @click.stop="clearBizPersonFilter" style="margin-left:6px;cursor:pointer;font-weight:700;font-size:14px">×</span>
                                     </span>
                                     <span v-if="bizFilterStageKeyword && currentView === '商机推进情况'" style="display:inline-flex;align-items:center;background:#fdf6ec;color:#e6a23c;font-size:12px;padding:4px 8px;border-radius:6px;margin-left:8px">
-                                        📊 {{bizFilterStageKeyword.value === 'other' ? '其他' : (STAGE_CONFIG.find(s=>s.key===bizFilterStageKeyword)?.label || bizFilterStageKeyword)}}
+                                        📊 {{bizFilterStageKeyword === 'other' ? '其他' : bizFilterStageKeyword}}
                                         <span @click.stop="clearBizStageFilter" style="margin-left:6px;cursor:pointer;font-weight:700;font-size:14px">×</span>
                                     </span>
                                 </div>
@@ -2095,6 +2150,78 @@
                         </div>
                     </div>
                 </template>
+                </div>
+                
+                <!-- 健康分看板 -->
+                <template v-if="currentView === '健康分看板'">
+                    <div class="page-header">
+                        <h2>💚 健康分看板</h2>
+                        <div style="display:flex;gap:12px;align-items:center">
+                            <span style="color:var(--text-secondary);font-size:13px">低分阈值：</span>
+                            <input type="range" min="0" max="10" step="0.5" v-model.number="healthThreshold" @input="handleHealthThresholdChange" style="width:120px">
+                            <span style="color:var(--warning);font-weight:600;min-width:40px">{{healthThreshold}}</span>
+                            <button class="btn btn-sm btn-primary" @click="loadHealthScores()">🔄 刷新数据</button>
+                        </div>
+                    </div>
+                    <div class="stats-grid" style="margin-bottom:24px">
+                        <div class="stat-card clickable" @click="showLowHealthDetail = !showLowHealthDetail" style="cursor:pointer">
+                            <div class="stat-icon" style="background:rgba(239,68,68,0.15)">⚠️</div>
+                            <div class="stat-value" style="color:#ef4444">{{lowHealthCount}}</div>
+                            <div class="stat-label">健康分 < {{healthThreshold}}</div>
+                            <div class="stat-change" style="color:#ef4444">占比 {{lowHealthPercentage}}% · 共 {{healthScoresData.length}} 客户</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background:rgba(16,185,129,0.15)">✅</div>
+                            <div class="stat-value" style="color:#10b981">{{healthScoresData.length - lowHealthCount}}</div>
+                            <div class="stat-label">健康分 ≥ {{healthThreshold}}</div>
+                            <div class="stat-change" style="color:#10b981">状态正常</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background:rgba(59,130,246,0.15)">📊</div>
+                            <div class="stat-value" style="color:#3b82f6">{{healthScoresData.length}}</div>
+                            <div class="stat-label">总客户数</div>
+                            <div class="stat-change" style="color:#94a3b8">最新快照</div>
+                        </div>
+                    </div>
+                    <div class="card" v-if="showLowHealthDetail" style="margin-bottom:24px">
+                        <div class="card-header">
+                            <h3>⚠️ 健康分低于 {{healthThreshold}} 的客户（{{lowHealthCount}} 家）</h3>
+                            <button class="btn btn-sm btn-default" @click="showLowHealthDetail = false">收起</button>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead><tr><th>客户名称</th><th>健康分</th><th>CSS负责人</th><th>操作</th></tr></thead>
+                                <tbody>
+                                    <tr v-for="c in lowHealthCustomers" :key="c.customerName">
+                                        <td style="font-weight:500">{{c.customerName}}</td>
+                                        <td><span :style="{background: c.healthScore < healthThreshold ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)', color: c.healthScore < healthThreshold ? '#ef4444' : '#10b981', padding:'2px 8px', borderRadius:'4px', fontSize:'13px', fontWeight:'600'}">{{c.healthScore}}</span></td>
+                                        <td>{{c.css || '-'}}</td>
+                                        <td><button class="btn btn-sm btn-primary" @click="openCRM(c.crmUrl)">🔗 打开CRM</button></td>
+                                    </tr>
+                                    <tr v-if="lowHealthCustomers.length === 0"><td colspan="4" style="text-align:center;color:var(--text-muted);padding:24px">暂无低分客户 🎉</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>📈 健康分变化趋势</h3>
+                            <div style="display:flex;gap:8px;align-items:center">
+                                <span style="color:var(--text-secondary);font-size:13px">显示最近</span>
+                                <select class="select select-sm" v-model="healthTrendRange" @change="initHealthTrendChart()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary)">
+                                    <option value="4">4周</option>
+                                    <option value="8">8周</option>
+                                    <option value="12">12周</option>
+                                </select>
+                                <span style="color:var(--text-secondary);font-size:13px">的数据</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="healthTrendChart" style="width:100%;height:400px"></div>
+                        </div>
+                    </div>
+                </template>
+                
             </main>
         </div>
         
@@ -2357,6 +2484,17 @@
             const isSyncing = ref(false);
             const lastSyncTime = ref(localStorage.getItem('lastSyncTime') || '');
             const syncError = ref('');
+            // ===== 健康分看板状态 =====
+            const healthScoresData = ref([]);
+            const healthThreshold = ref(4);
+            const showLowHealthDetail = ref(false);
+            const healthTrendRange = ref('8');
+            const lowHealthCount = computed(() => healthScoresData.value.filter(c => c.healthScore < healthThreshold.value).length);
+            const lowHealthPercentage = computed(() => {
+                if (healthScoresData.value.length === 0) return '0.0';
+                return ((lowHealthCount.value / healthScoresData.value.length) * 100).toFixed(1);
+            });
+            const lowHealthCustomers = computed(() => healthScoresData.value.filter(c => c.healthScore < healthThreshold.value));
             
             // JSONBin API 调用封装
             const jsonbinGet = async (binId) => {
@@ -2476,6 +2614,80 @@
                 }
             };
             
+
+            // ===== 健康分看板方法 =====
+            const loadHealthScores = async () => {
+                try {
+                    const data = await jsonbinGet(JSONBIN_CONFIG.bins.healthScores);
+                    if (data && data.snapshots && data.snapshots.length > 0) {
+                        const latest = data.snapshots[data.snapshots.length - 1];
+                        healthScoresData.value = latest.data || [];
+                        console.log('健康分数据加载成功，共', healthScoresData.value.length, '条');
+                    } else {
+                        healthScoresData.value = [];
+                    }
+                } catch (err) {
+                    console.error('加载健康分数据失败:', err);
+                    showToast('健康分数据加载失败', 'error');
+                }
+            };
+
+            const openCRM = (crmUrl) => {
+                if (crmUrl) {
+                    window.open(crmUrl, '_blank');
+                } else {
+                    showToast('该客户暂无CRM链接', 'warning');
+                }
+            };
+
+            const initHealthTrendChart = async () => {
+                const chartDom = document.getElementById('healthTrendChart');
+                if (!chartDom) return;
+                if (healthScoresData.value.length === 0) {
+                    chartDom.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted)">暂无数据，请先通过脚本同步健康分数据</div>';
+                    return;
+                }
+                const data = await jsonbinGet(JSONBIN_CONFIG.bins.healthScores);
+                if (!data || !data.snapshots || data.snapshots.length === 0) return;
+                const weeks = parseInt(healthTrendRange.value);
+                const snapshots = data.snapshots.slice(-weeks);
+                const weeksList = snapshots.map(s => s.week || (s.timestamp ? s.timestamp.slice(0,10) : ''));
+                const avgSeries = weeksList.map((w, idx) => {
+                    const snap = snapshots[idx];
+                    if (!snap || !snap.data || snap.data.length === 0) return null;
+                    const sum = snap.data.reduce((a, c) => a + (parseFloat(c.healthScore) || 0), 0);
+                    return (sum / snap.data.length).toFixed(2);
+                });
+                const lowSeries = weeksList.map((w, idx) => {
+                    const snap = snapshots[idx];
+                    if (!snap || !snap.data) return null;
+                    return snap.data.filter(c => (parseFloat(c.healthScore) || 0) < healthThreshold.value).length;
+                });
+                if (window._healthChart) window._healthChart.dispose();
+                const chart = echarts.init(chartDom, 'dark');
+                window._healthChart = chart;
+                chart.setOption({
+                    backgroundColor: 'transparent',
+                    tooltip: { trigger: 'axis' },
+                    legend: { data: ['平均健康分', '低分客户数'], textStyle: { color: '#94a3b8' } },
+                    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                    xAxis: { type: 'category', data: weeksList, axisLabel: { color: '#94a3b8', rotate: weeksList.length > 8 ? 30 : 0 } },
+                    yAxis: [
+                        { type: 'value', min: 0, max: 10, axisLabel: { color: '#94a3b8' }, name: '平均健康分', nameTextStyle: { color: '#94a3b8' } },
+                        { type: 'value', min: 0, axisLabel: { color: '#94a3b8' }, name: '低分客户数', nameTextStyle: { color: '#94a3b8' } }
+                    ],
+                    series: [
+                        { name: '平均健康分', type: 'line', data: avgSeries, itemStyle: { color: '#3b82f6' }, areaStyle: { color: 'rgba(59,130,246,0.1)' }, yAxisIndex: 0 },
+                        { name: '低分客户数', type: 'bar', data: lowSeries, itemStyle: { color: 'rgba(239,68,68,0.6)' }, yAxisIndex: 1 }
+                    ]
+                });
+                window.addEventListener('resize', () => chart.resize());
+            };
+
+            const handleHealthThresholdChange = () => {
+                if (window._healthChart) initHealthTrendChart();
+            };
+
             // CSS成员列表（下拉菜单用）
             const cssList = ['张辰', '李晓丽', '娄洋', '宋明亮', '曾瑞锋', '王俊朋', '周旺', '王亚淼', '徐琪', '彭博'];
             
@@ -7362,6 +7574,7 @@
             };
             onMounted(() => document.addEventListener('keydown', handleLightboxKey));
             onUnmounted(() => {
+                loadHealthScores();
                 document.removeEventListener('keydown', handleLightboxKey);
                 document.body.style.overflow = '';
             });
