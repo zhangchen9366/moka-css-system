@@ -1574,7 +1574,7 @@
                                         <input type="date" v-model="filterDateStart" @change="filterRecords" placeholder="开始日期">
                                         <span class="range-sep">—</span>
                                         <input type="date" v-model="filterDateEnd" @change="filterRecords" placeholder="结束日期">
-                                        <button v-if="filterDateStart || filterDateEnd" class="clear-btn" @click="filterDateStart='';filterDateEnd='';filterRecords()" title="清除日期筛选">×</button>
+                                        <button v-if="filterDateStart || filterDateEnd" class="clear-btn" @click="clearDateFilter" title="清除日期筛选">×</button>
                                     </div>
                                 </div>
                                 <div class="toolbar-right">
@@ -1639,7 +1639,7 @@
                                         <input type="date" v-model="configFilterDateStart" @change="filterConfigs" placeholder="开始日期">
                                         <span class="range-sep">—</span>
                                         <input type="date" v-model="configFilterDateEnd" @change="filterConfigs" placeholder="结束日期">
-                                        <button v-if="configFilterDateStart || configFilterDateEnd" class="clear-btn" @click="configFilterDateStart='';configFilterDateEnd='';filterConfigs()" title="清除日期筛选">×</button>
+                                        <button v-if="configFilterDateStart || configFilterDateEnd" class="clear-btn" @click="clearConfigDateFilter" title="清除日期筛选">×</button>
                                     </div>
                                 </div>
                                 <div class="toolbar-right">
@@ -1704,7 +1704,7 @@
                                         <input type="date" v-model="meetingFilterDateStart" @change="filterMeetings" placeholder="开始日期">
                                         <span class="range-sep">—</span>
                                         <input type="date" v-model="meetingFilterDateEnd" @change="filterMeetings" placeholder="结束日期">
-                                        <button v-if="meetingFilterDateStart || meetingFilterDateEnd" class="clear-btn" @click="meetingFilterDateStart='';meetingFilterDateEnd='';filterMeetings()" title="清除日期筛选">×</button>
+                                        <button v-if="meetingFilterDateStart || meetingFilterDateEnd" class="clear-btn" @click="clearMeetingDateFilter" title="清除日期筛选">×</button>
                                     </div>
                                 </div>
                                 <div class="toolbar-right">
@@ -7056,6 +7056,9 @@
             };
             const bizFilterStageKeyword = ref('');
             const clearBizStageFilter = () => { bizFilterStageKeyword.value = ''; };
+            const clearDateFilter = () => { filterDateStart.value = ''; filterDateEnd.value = ''; filterRecords(); };
+            const clearConfigDateFilter = () => { configFilterDateStart.value = ''; configFilterDateEnd.value = ''; filterConfigs(); };
+            const clearMeetingDateFilter = () => { meetingFilterDateStart.value = ''; meetingFilterDateEnd.value = ''; filterMeetings(); };
             const filterHistory = () => {};
             const getColWidth = (c) => {
                 if (!c) return null;
@@ -7621,7 +7624,9 @@
                 // 商机统计
                 bizPersonStats, bizPersonStatsMax, bizTypeStats, bizStageStats, bizStageSorted, bizStageSortedMax,
                 bizFilterPerson, drillToBizPerson, clearBizPersonFilter, drillToBizType,
-                bizFilterStageKeyword, drillToStage, clearBizStageFilter
+                bizFilterStageKeyword, drillToStage, clearBizStageFilter,
+                // 筛选清除方法
+                clearDateFilter, clearConfigDateFilter, clearMeetingDateFilter
             };
         }
     }).mount('#app');
