@@ -1594,7 +1594,7 @@
                                             <td><span class="tag tag-warning">{{row.问题类别}}</span></td>
                                             <td><span class="tag" :class="getStatusClass(row.是否解决)">{{row.是否解决}}</span></td>
                                             <td :title="row.客户问题描述">{{truncate(row.客户问题描述,40)}}</td>
-                                            <td @click.stop>
+                                            <td @click.stop="">
                                                 <button class="btn" style="background:none;color:#409eff;padding:4px 8px" @click="openRecordModal('edit', row)">编辑</button>
                                                 <button class="btn" style="background:none;color:#67c23a;padding:4px 8px" @click="copyRecord(row)">复制</button>
                                                 <button class="btn" style="background:none;color:#f56c6c;padding:4px 8px" @click="confirmDeleteRecord(row, idx)">删除</button>
@@ -1660,7 +1660,7 @@
                                             <td>{{row.配置类型}}</td>
                                             <td :title="row.配置简介">{{truncate(row.配置简介,25)}}</td>
                                             <td>{{row.配置用时}}</td>
-                                            <td @click.stop>
+                                            <td @click.stop="">
                                                 <button class="btn" style="background:none;color:#409eff;padding:4px 8px" @click="openConfigModal('edit', row)">编辑</button>
                                                 <button class="btn" style="background:none;color:#f56c6c;padding:4px 8px" @click="confirmDeleteConfig(row, idx)">删除</button>
                                             </td>
@@ -1724,7 +1724,7 @@
                                             <td :title="row['电话/会议主题']">{{truncate(row['电话/会议主题'],30)}}</td>
                                             <td :title="row['电话/会议人员']">{{truncate(row['电话/会议人员'],20)}}</td>
                                             <td>{{row['电话/会议总时长（min）']}}</td>
-                                            <td @click.stop>
+                                            <td @click.stop="">
                                                 <button class="btn" style="background:none;color:#409eff;padding:4px 8px" @click="openMeetingModal('edit', row)">编辑</button>
                                                 <button class="btn" style="background:none;color:#f56c6c;padding:4px 8px" @click="confirmDeleteMeeting(row, idx)">删除</button>
                                             </td>
@@ -2121,7 +2121,7 @@
                                                 <span v-else-if="(col.key === '附件' || col.key === '截图') && row[col.key]" style="color:#67c23a" title="有附件">📎</span>
                                                 <span v-else :title="row[col.key]">{{truncate(row[col.key],35)}}</span>
                                             </td>
-                                            <td @click.stop>
+                                            <td @click.stop="">
                                                 <button class="btn" style="background:none;color:#409eff;padding:4px 8px" @click="openEdit(row,idx)">编辑</button>
                                                 <button class="btn" style="background:none;color:#f56c6c;padding:4px 8px" @click="confirmDelete(row,idx)">删除</button>
                                             </td>
@@ -2313,13 +2313,13 @@
 
         <!-- 图片放大预览（Lightbox） -->
         <div v-if="lightboxVisible" class="lightbox-overlay" @click="onLightboxOverlay">
-            <img :src="lightboxImage" @click.stop alt="附件预览">
+            <img :src="lightboxImage" @click.stop="" alt="附件预览">
             <button class="lightbox-close" @click="closeLightbox" title="关闭 (Esc)">×</button>
         </div>
 
         <!-- 通用编辑弹窗 -->
         <div class="modal-overlay" v-if="editVisible" @click.self="editVisible=false">
-            <div class="modal" @click.stop>
+            <div class="modal" @click.stop="">
                 <div class="modal-header"><h3>{{editType==='add'?'新增记录':'编辑记录'}}</h3><button class="modal-close" @click="editVisible=false">×</button></div>
                 <div class="modal-body">
                     <div class="form-grid">
@@ -2337,7 +2337,7 @@
                                     </div>
                                     <div class="customer-select-dropdown" :class="{show: customerDropdownOpen}">
                                         <div class="customer-select-search">
-                                            <input type="text" v-model="customerSearchText" placeholder="输入客户名称搜索..." @click.stop>
+                                            <input type="text" v-model="customerSearchText" placeholder="输入客户名称搜索..." @click.stop="">
                                         </div>
                                         <template v-if="filteredCustomerList.length > 0">
                                             <template v-for="(group, gName) in groupedCustomerList" :key="gName">
