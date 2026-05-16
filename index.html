@@ -1526,7 +1526,7 @@
                         <div class="panel-header"><span class="panel-title">⚡ 快捷操作</span></div>
                         <div class="panel-body">
                             <div class="quick-grid">
-                                <div class="quick-item" @click="switchView('会话记录'); openRecordModal('add')"><span class="icon">💬</span><div class="info"><div class="title">记录会话</div><div class="desc">快速记录今日工作</div></div></div>
+                                <div class="quick-item" @click="openRecordModalFromDashboard"><span class="icon">💬</span><div class="info"><div class="title">记录会话</div><div class="desc">快速记录今日工作</div></div></div>
                                 <div class="quick-item" @click="switchView('填写周报')"><span class="icon">📝</span><div class="info"><div class="title">填写周报</div><div class="desc">本周工作汇报</div></div></div>
                                 <div class="quick-item" @click="switchView('商机推进情况')"><span class="icon">🚀</span><div class="info"><div class="title">商机管理</div><div class="desc">跟进商机</div></div></div>
                                 <div class="quick-item" @click="switchView('EVA激活情况跟踪')"><span class="icon">🤖</span><div class="info"><div class="title">EVA激活</div><div class="desc">跟踪激活</div></div></div>
@@ -1754,7 +1754,7 @@
                             <div class="week-selector-new">
                                 <label>📅 选择周次</label>
                                 <input type="week" v-model="currentWeek" @change="loadWeeklyReport">
-                                <button class="btn btn-default btn-sm" @click="currentWeek = getCurrentWeek(); loadWeeklyReport()">本周</button>
+                                <button class="btn btn-default btn-sm" @click="setCurrentWeek">本周</button>
                                 <div class="week-badge">
                                     <span class="icon">📆</span>
                                     <span>{{getWeekDateRange()}}</span>
@@ -1906,7 +1906,7 @@
                             <div class="week-selector-new">
                                 <label>📅 选择周次</label>
                                 <input type="week" v-model="summaryWeek" @change="loadWeekSummary">
-                                <button class="btn btn-default btn-sm" @click="summaryWeek = getCurrentWeek(); loadWeekSummary()">本周</button>
+                                <button class="btn btn-default btn-sm" @click="setSummaryWeek">本周</button>
                             </div>
                             
                             <div v-if="weekSummaryData.length > 0">
@@ -2157,7 +2157,7 @@
                             <span style="color:var(--text-secondary);font-size:13px">低分阈值：</span>
                             <input type="range" min="0" max="10" step="0.5" v-model.number="healthThreshold" @input="handleHealthThresholdChange" style="width:120px">
                             <span style="color:var(--warning);font-weight:600;min-width:40px">{{healthThreshold}}</span>
-                            <button class="btn btn-sm btn-primary" @click="loadHealthScores()">🔄 刷新数据</button>
+                            <button class="btn btn-sm btn-primary" @click="loadHealthScores">🔄 刷新数据</button>
                         </div>
                     </div>
                     <div class="stats-grid" style="margin-bottom:24px">
@@ -2205,7 +2205,7 @@
                             <h3>📈 健康分变化趋势</h3>
                             <div style="display:flex;gap:8px;align-items:center">
                                 <span style="color:var(--text-secondary);font-size:13px">显示最近</span>
-                                <select class="select select-sm" v-model="healthTrendRange" @change="initHealthTrendChart()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary)">
+                                <select class="select select-sm" v-model="healthTrendRange" @change="initHealthTrendChart" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary)">
                                     <option value="4">4周</option>
                                     <option value="8">8周</option>
                                     <option value="12">12周</option>
@@ -6467,6 +6467,8 @@
                 return `${fmt(start)} - ${fmt(end)}`;
             }
             
+            const setCurrentWeek = () => { currentWeek.value = getCurrentWeek(); loadWeeklyReport(); };
+            const setSummaryWeek = () => { summaryWeek.value = getCurrentWeek(); loadWeekSummary(); };
             function getCurrentWeek() {
                 const now = new Date();
                 const year = now.getFullYear();
@@ -7235,6 +7237,7 @@
                 {key:'附件', label:'附件', full:true, isAttachment:true}
             ];
             
+            const openRecordModalFromDashboard = () => { switchView('会话记录'); openRecordModal('add'); };
             const openRecordModal = (type, row = null) => {
                 editType.value = type;
                 if (type === 'add') {
@@ -7590,13 +7593,13 @@
                 weekSummaryData, summaryWeek, loadWeekSummary,
                 // 周报
                 weeklyForm, weeklySummary, currentWeek, summaryWeek, showReportModal, reportContent, historyFilter, filteredHistory, weeklyUnfilled,
-                importWeeklyData, getCurrentWeek, getWeekDateRange, loadWeeklyReport, saveWeeklyReport, addEvaItem, removeEvaItem, addHealthItem, removeHealthItem, previewWeeklyReport, viewWeeklyReport, generateWeeklyReport, copyReport, exportAllWeekly, generateTeamReport, formatDate,
+                importWeeklyData, getCurrentWeek, getWeekDateRange, loadWeeklyReport, saveWeeklyReport, addEvaItem, removeEvaItem, addHealthItem, removeHealthItem, previewWeeklyReport, viewWeeklyReport, generateWeeklyReport, copyReport, exportAllWeekly, generateTeamReport, formatDate, setCurrentWeek, setSummaryWeek,
                 // 统计
                 todayRecordsCount, weekRecordCount, weekConfigHours, weekConfigCount, weekMeetingHours, weekMeetingCount,
                 filledMembers, isMemberFilledToday, getMemberTodayRecords, getMemberTodayConfig, getMemberTodayMeeting,
                 // 会话记录
                 recordPage, filteredRecords, paginatedRecords, recordTotalPages, recordVisiblePages, searchText, filterChannel, filterStatus, filterDate, filterDateStart, filterDateEnd, filterCss, filterRecords,
-                openRecordModal, openRecordDetail, copyRecord, confirmDeleteRecord, exportRecordsExcel, recordColumns,
+                openRecordModal, openRecordModalFromDashboard, openRecordDetail, copyRecord, confirmDeleteRecord, exportRecordsExcel, recordColumns,
                 // 配置记录
                 configPage, filteredConfigs, paginatedConfigs, configTotalPages, configVisiblePages, configFilterSource, configFilterDate, configFilterDateStart, configFilterDateEnd, configFilterCss, filterConfigs,
                 openConfigModal, openConfigDetail, confirmDeleteConfig, exportConfigsExcel, configColumns,
@@ -7626,7 +7629,9 @@
                 bizFilterPerson, drillToBizPerson, clearBizPersonFilter, drillToBizType,
                 bizFilterStageKeyword, drillToStage, clearBizStageFilter,
                 // 筛选清除方法
-                clearDateFilter, clearConfigDateFilter, clearMeetingDateFilter
+                clearDateFilter, clearConfigDateFilter, clearMeetingDateFilter,
+                // 健康分
+                healthScoresData, healthThreshold, showLowHealthDetail, healthTrendRange, lowHealthCount, lowHealthPercentage, lowHealthCustomers, initHealthTrendChart, loadHealthScores, openCRM
             };
         }
     }).mount('#app');
