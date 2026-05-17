@@ -2297,7 +2297,8 @@
                     </div>
                 </template>
             </div>
-
+        </div>
+        
         <!-- 图片放大预览（Lightbox） -->
         <div v-if="lightboxVisible" class="lightbox-overlay" @click="onLightboxOverlay">
             <img :src="lightboxImage" @click.stop="" alt="附件预览">
@@ -2441,6 +2442,7 @@
         </div>
         
         <div v-if="toast.show" class="toast" :class="'toast-'+toast.type">{{toast.msg}}</div>
+    </div>
     </div>
     
     <script src="echarts.min.js"></script>
@@ -7632,6 +7634,7 @@
                 // 健康分
                 healthScoresData, healthThreshold, showLowHealthDetail, healthTrendRange, lowHealthCount, lowHealthPercentage, lowHealthCustomers, initHealthTrendChart, loadHealthScores, openCRM, handleHealthThresholdChange
             };
+
         }
     }).mount('#app');
     </script>
