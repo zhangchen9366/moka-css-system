@@ -2003,7 +2003,6 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
                 </template>
                 
                 <!-- 商机进展概览 -->
@@ -2060,7 +2059,6 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
                 </template>
                 
 
@@ -2209,7 +2207,6 @@
                     </div>
                 </template>
 
-                </div>
             </main>
         </div>
         
@@ -2300,7 +2297,6 @@
                     </div>
                 </template>
             </div>
-        </div>
 
         <!-- 图片放大预览（Lightbox） -->
         <div v-if="lightboxVisible" class="lightbox-overlay" @click="onLightboxOverlay">
@@ -7634,7 +7630,7 @@
                 // 筛选清除方法
                 clearDateFilter, clearConfigDateFilter, clearMeetingDateFilter,
                 // 健康分
-                healthScoresData, healthThreshold, showLowHealthDetail, healthTrendRange, lowHealthCount, lowHealthPercentage, lowHealthCustomers, initHealthTrendChart, loadHealthScores, openCRM
+                healthScoresData, healthThreshold, showLowHealthDetail, healthTrendRange, lowHealthCount, lowHealthPercentage, lowHealthCustomers, initHealthTrendChart, loadHealthScores, openCRM, handleHealthThresholdChange
             };
         }
     }).mount('#app');

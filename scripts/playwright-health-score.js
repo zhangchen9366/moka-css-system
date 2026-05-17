@@ -1,4 +1,4 @@
-const { chromium } = require('playwright');
+const { webkit } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 
@@ -47,7 +47,7 @@ function getWeekKey() {
 
 // 主函数
 async function main() {
-    const browser = await chromium.launch({ headless: false });
+    const browser = await webkit.launch({ headless: false });
     const context = await browser.newContext();
     const page = await context.newPage();
 
