@@ -1985,18 +1985,7 @@
                                          @click="drillToBizPerson(item.name)"
                                          style="display:flex;flex-direction:column;align-items:center;flex:1;max-width:100px;height:100%;justify-content:flex-end;cursor:pointer;position:relative">
                                         <div style="font-size:11px;font-weight:700;color:var(--primary-light);margin-bottom:6px">{{item.count}}</div>
-                                        <div :style="{
-                                            height: (item.count / bizPersonStatsMax * 160) + 'px',
-                                            background: item.count === bizPersonStatsMax ? 'linear-gradient(180deg,#6366f1,#a855f7)' : 'linear-gradient(180deg,#3b82f6,#818cf8)',
-                                            borderRadius: '8px 8px 0 0',
-                                            width: '100%',
-                                            minHeight: '8px',
-                                            transition: 'all 0.6s cubic-bezier(.4,0,.2,1)',
-                                            boxShadow: item.count === bizPersonStatsMax ? '0 4px 16px rgba(99,102,241,0.4)' : '0 2px 8px rgba(59,130,246,0.2)',
-                                            position: 'relative'
-                                        }"
-                                        :title="item.name + ': ' + item.count + ' 条商机'">
-                                        </div>
+                                        <div :style="barStyle(item)" :title="item.name + ': ' + item.count + ' 条商机'"></div>
                                         <div style="font-size:11px;color:var(--text-secondary);margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;text-align:center;font-weight:500">{{item.name}}</div>
                                     </div>
                                 </div>
@@ -2074,6 +2063,78 @@
                     </div>
                 </template>
                 
+
+                <!-- 健康分看板 -->
+                <!-- 健康分看板 -->
+                <template v-else-if="currentView === '健康分看板'">
+                    <div class="page-header">
+                        <h2>💚 健康分看板</h2>
+                        <div style="display:flex;gap:12px;align-items:center">
+                            <span style="color:var(--text-secondary);font-size:13px">低分阈值：</span>
+                            <input type="range" min="0" max="10" step="0.5" v-model.number="healthThreshold" @input="handleHealthThresholdChange" style="width:120px">
+                            <span style="color:var(--warning);font-weight:600;min-width:40px">{{healthThreshold}}</span>
+                            <button class="btn btn-sm btn-primary" @click="loadHealthScores">🔄 刷新数据</button>
+                        </div>
+                    </div>
+                    <div class="stats-grid" style="margin-bottom:24px">
+                        <div class="stat-card clickable" @click="showLowHealthDetail = !showLowHealthDetail" style="cursor:pointer">
+                            <div class="stat-icon" style="background:rgba(239,68,68,0.15)">⚠️</div>
+                            <div class="stat-value" style="color:#ef4444">{{lowHealthCount}}</div>
+                            <div class="stat-label">健康分 < {{healthThreshold}}</div>
+                            <div class="stat-change" style="color:#ef4444">占比 {{lowHealthPercentage}}% · 共 {{healthScoresData.length}} 客户</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background:rgba(16,185,129,0.15)">✅</div>
+                            <div class="stat-value" style="color:#10b981">{{healthScoresData.length - lowHealthCount}}</div>
+                            <div class="stat-label">健康分 ≥ {{healthThreshold}}</div>
+                            <div class="stat-change" style="color:#10b981">状态正常</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background:rgba(59,130,246,0.15)">📊</div>
+                            <div class="stat-value" style="color:#3b82f6">{{healthScoresData.length}}</div>
+                            <div class="stat-label">总客户数</div>
+                            <div class="stat-change" style="color:#94a3b8">最新快照</div>
+                        </div>
+                    </div>
+                    <div class="card" v-if="showLowHealthDetail" style="margin-bottom:24px">
+                        <div class="card-header">
+                            <h3>⚠️ 健康分低于 {{healthThreshold}} 的客户（{{lowHealthCount}} 家）</h3>
+                            <button class="btn btn-sm btn-default" @click="showLowHealthDetail = false">收起</button>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead><tr><th>客户名称</th><th>健康分</th><th>CSS负责人</th><th>操作</th></tr></thead>
+                                <tbody>
+                                    <tr v-for="c in lowHealthCustomers" :key="c.customerName">
+                                        <td style="font-weight:500">{{c.customerName}}</td>
+                                        <td><span :style="{background: c.healthScore < healthThreshold ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)', color: c.healthScore < healthThreshold ? '#ef4444' : '#10b981', padding:'2px 8px', borderRadius:'4px', fontSize:'13px', fontWeight:'600'}">{{c.healthScore}}</span></td>
+                                        <td>{{c.css || '-'}}</td>
+                                        <td><button class="btn btn-sm btn-primary" @click="openCRM(c.crmUrl)">🔗 打开CRM</button></td>
+                                    </tr>
+                                    <tr v-if="lowHealthCustomers.length === 0"><td colspan="4" style="text-align:center;color:var(--text-muted);padding:24px">暂无低分客户 🎉</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>📈 健康分变化趋势</h3>
+                            <div style="display:flex;gap:8px;align-items:center">
+                                <span style="color:var(--text-secondary);font-size:13px">显示最近</span>
+                                <select class="select select-sm" v-model="healthTrendRange" @change="initHealthTrendChart" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary)">
+                                    <option value="4">4周</option>
+                                    <option value="8">8周</option>
+                                    <option value="12">12周</option>
+                                </select>
+                                <span style="color:var(--text-secondary);font-size:13px">的数据</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="healthTrendChart" style="width:100%;height:400px"></div>
+                        </div>
+                    </div>
+                </template>
+                
                 <!-- 客户列表页面（通用） -->
                 <template v-else>
                     <div class="breadcrumb">
@@ -2147,78 +2208,8 @@
                         </div>
                     </div>
                 </template>
+
                 </div>
-                
-                <!-- 健康分看板 -->
-                <template v-if="currentView === '健康分看板'">
-                    <div class="page-header">
-                        <h2>💚 健康分看板</h2>
-                        <div style="display:flex;gap:12px;align-items:center">
-                            <span style="color:var(--text-secondary);font-size:13px">低分阈值：</span>
-                            <input type="range" min="0" max="10" step="0.5" v-model.number="healthThreshold" @input="handleHealthThresholdChange" style="width:120px">
-                            <span style="color:var(--warning);font-weight:600;min-width:40px">{{healthThreshold}}</span>
-                            <button class="btn btn-sm btn-primary" @click="loadHealthScores">🔄 刷新数据</button>
-                        </div>
-                    </div>
-                    <div class="stats-grid" style="margin-bottom:24px">
-                        <div class="stat-card clickable" @click="showLowHealthDetail = !showLowHealthDetail" style="cursor:pointer">
-                            <div class="stat-icon" style="background:rgba(239,68,68,0.15)">⚠️</div>
-                            <div class="stat-value" style="color:#ef4444">{{lowHealthCount}}</div>
-                            <div class="stat-label">健康分 < {{healthThreshold}}</div>
-                            <div class="stat-change" style="color:#ef4444">占比 {{lowHealthPercentage}}% · 共 {{healthScoresData.length}} 客户</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-icon" style="background:rgba(16,185,129,0.15)">✅</div>
-                            <div class="stat-value" style="color:#10b981">{{healthScoresData.length - lowHealthCount}}</div>
-                            <div class="stat-label">健康分 ≥ {{healthThreshold}}</div>
-                            <div class="stat-change" style="color:#10b981">状态正常</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-icon" style="background:rgba(59,130,246,0.15)">📊</div>
-                            <div class="stat-value" style="color:#3b82f6">{{healthScoresData.length}}</div>
-                            <div class="stat-label">总客户数</div>
-                            <div class="stat-change" style="color:#94a3b8">最新快照</div>
-                        </div>
-                    </div>
-                    <div class="card" v-if="showLowHealthDetail" style="margin-bottom:24px">
-                        <div class="card-header">
-                            <h3>⚠️ 健康分低于 {{healthThreshold}} 的客户（{{lowHealthCount}} 家）</h3>
-                            <button class="btn btn-sm btn-default" @click="showLowHealthDetail = false">收起</button>
-                        </div>
-                        <div class="table-wrap">
-                            <table>
-                                <thead><tr><th>客户名称</th><th>健康分</th><th>CSS负责人</th><th>操作</th></tr></thead>
-                                <tbody>
-                                    <tr v-for="c in lowHealthCustomers" :key="c.customerName">
-                                        <td style="font-weight:500">{{c.customerName}}</td>
-                                        <td><span :style="{background: c.healthScore < healthThreshold ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)', color: c.healthScore < healthThreshold ? '#ef4444' : '#10b981', padding:'2px 8px', borderRadius:'4px', fontSize:'13px', fontWeight:'600'}">{{c.healthScore}}</span></td>
-                                        <td>{{c.css || '-'}}</td>
-                                        <td><button class="btn btn-sm btn-primary" @click="openCRM(c.crmUrl)">🔗 打开CRM</button></td>
-                                    </tr>
-                                    <tr v-if="lowHealthCustomers.length === 0"><td colspan="4" style="text-align:center;color:var(--text-muted);padding:24px">暂无低分客户 🎉</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="card-header">
-                            <h3>📈 健康分变化趋势</h3>
-                            <div style="display:flex;gap:8px;align-items:center">
-                                <span style="color:var(--text-secondary);font-size:13px">显示最近</span>
-                                <select class="select select-sm" v-model="healthTrendRange" @change="initHealthTrendChart" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary)">
-                                    <option value="4">4周</option>
-                                    <option value="8">8周</option>
-                                    <option value="12">12周</option>
-                                </select>
-                                <span style="color:var(--text-secondary);font-size:13px">的数据</span>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div id="healthTrendChart" style="width:100%;height:400px"></div>
-                        </div>
-                    </div>
-                </template>
-                
             </main>
         </div>
         
@@ -2456,7 +2447,7 @@
         <div v-if="toast.show" class="toast" :class="'toast-'+toast.type">{{toast.msg}}</div>
     </div>
     
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <script src="echarts.min.js"></script>
     <script src="vue.global.prod.js"></script>
     <script src="xlsx.full.min.js"></script>
     <script>
@@ -6991,6 +6982,16 @@
                 return Object.entries(map).map(([name, count]) => ({name, count})).sort((a,b) => b.count - a.count);
             });
             const bizPersonStatsMax = computed(() => Math.max(...bizPersonStats.value.map(i => i.count), 1));
+            const barStyle = (item) => ({
+                height: (item.count / bizPersonStatsMax.value * 160) + 'px',
+                background: item.count === bizPersonStatsMax.value ? 'linear-gradient(180deg,#6366f1,#a855f7)' : 'linear-gradient(180deg,#3b82f6,#818cf8)',
+                borderRadius: '8px 8px 0 0',
+                width: '100%',
+                minHeight: '8px',
+                transition: 'all 0.6s cubic-bezier(.4,0,.2,1)',
+                boxShadow: item.count === bizPersonStatsMax.value ? '0 4px 16px rgba(99,102,241,0.4)' : '0 2px 8px rgba(59,130,246,0.2)',
+                position: 'relative'
+            });
             
             // 推进类型统计
             const bizTypeStats = computed(() => {
@@ -7619,13 +7620,15 @@
                 defaultColumns, customFields, fieldManageVisible, fieldManageView, openFieldManage, addField, removeField, moveField,
                 // 返回功能
                 returnView, goBack,
+                // 二级菜单
+                bizMenuExpanded, toggleBizMenu,
                 // 客户搜索下拉
                 customerDropdownOpen, customerSearchText, filteredCustomerList, groupedCustomerList,
                 toggleCustomerDropdown, selectCustomer, clearCustomer, closeCustomerDropdown,
                 // 图片预览
                 lightboxVisible, lightboxImage, openLightbox, closeLightbox, onLightboxOverlay,
                 // 商机统计
-                bizPersonStats, bizPersonStatsMax, bizTypeStats, bizStageStats, bizStageSorted, bizStageSortedMax,
+                bizPersonStats, bizPersonStatsMax, barStyle, bizTypeStats, bizStageStats, bizStageSorted, bizStageSortedMax,
                 bizFilterPerson, drillToBizPerson, clearBizPersonFilter, drillToBizType,
                 bizFilterStageKeyword, drillToStage, clearBizStageFilter,
                 // 筛选清除方法
