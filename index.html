@@ -274,6 +274,26 @@
         .biz-item-card:hover {
             border-color: var(--primary);
             box-shadow: 0 4px 12px rgba(59,130,246,0.15);
+            transform: translateY(-2px);
+        }
+        /* 高亮行——从商机明细穿透跳转后的目标行 */
+        tr.biz-highlight-row {
+            background: linear-gradient(90deg, rgba(255,180,0,0.18) 0%, rgba(255,180,0,0.08) 100%) !important;
+            outline: 2px solid #f59e0b;
+            outline-offset: -2px;
+            position: relative;
+        }
+        tr.biz-highlight-row td:first-child::before {
+            content: '👉';
+            margin-right: 4px;
+        }
+        @keyframes biz-highlight-flash {
+            0%   { background: rgba(255,180,0,0.45); }
+            50%  { background: rgba(255,180,0,0.12); }
+            100% { background: rgba(255,180,0,0.22); }
+        }
+        tr.biz-highlight-row {
+            animation: biz-highlight-flash 0.8s ease-in-out 2;
         }
 
         /* ===== 主内容区 ===== */
@@ -2009,16 +2029,6 @@
                 <template v-else-if="currentView === '商机进展概览'">
                     <div class="breadcrumb"><a @click="switchView('商机推进情况')">商机推进</a><span>/</span><span>进展概览</span></div>
                     <div class="panel" style="background:transparent;box-shadow:none">
-                        <!-- 顶部阶段汇总卡片 -->
-                        <div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap">
-                            <div v-for="s in bizStageSorted" :key="s.stage" @click="drillToStage(s)" class="biz-stage-card">
-                                <!-- 左侧色条 -->
-                                <div :style="{position:'absolute',left:0,top:0,bottom:0,width:'4px',background:s.color,borderRadius:'14px 0 0 14px'}"></div>
-                                <div style="font-size:18px;margin-bottom:6px">{{s.icon}}</div>
-                                <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">{{s.stage}}</div>
-                                <div style="font-size:26px;font-weight:800;color:var(--text-primary)">{{s.count}}<span style="font-size:12px;font-weight:400;color:var(--text-muted);margin-left:2px">条</span></div>
-                            </div>
-                        </div>
                         <!-- 阶段分布图（可穿透） -->
                         <div style="background:var(--bg-card);border-radius:16px;padding:28px 32px;margin-bottom:20px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
                             <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px">
@@ -2048,8 +2058,9 @@
                                 </div>
                                 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
                                     <div v-for="item in s.items" :key="item.客户名称+item.负责CSS" 
-                                         @click="switchView('商机推进情况')"
-                                         class="biz-item-card">
+                                         @click.stop="drillToSingleItem(item, s)"
+                                         class="biz-item-card"
+                                         style="cursor:pointer">
                                         <div style="font-size:12px;font-weight:600;color:var(--text-primary);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{item.客户名称}}</div>
                                         <div style="display:flex;align-items:center;gap:6px">
                                             <span style="font-size:10px;background:var(--bg-hover);color:var(--text-muted);padding:2px 6px;border-radius:4px">{{item.负责CSS}}</span>
@@ -2173,7 +2184,7 @@
                                         </tr>
                                     </thead>
                                     <tbody v-if="filteredData.length > 0">
-                                        <tr v-for="(row,idx) in paginatedData" :key="idx" :class="getRowClass(row)" @click="openDetail(row)">
+                                        <tr v-for="(row,idx) in paginatedData" :key="idx" :class="[getRowClass(row), bizHighlightKey && row.客户名称 === bizHighlightKey ? 'biz-highlight-row' : '']" @click="openDetail(row)">
                                             <td>{{(currentPage-1)*20+idx+1}}</td>
                                             <td v-for="col in columns" :key="col.key">
                                                 <span v-if="col.isTag" class="tag" :class="getTypeClass(row[col.key])">{{row[col.key]}}</span>
@@ -2449,7 +2460,7 @@
     <script src="vue.global.prod.js"></script>
     <script src="xlsx.full.min.js"></script>
     <script>
-    const {createApp, ref, computed, onMounted, onUnmounted} = Vue;
+    const {createApp, ref, computed, onMounted, onUnmounted, nextTick} = Vue;
     createApp({
         setup() {
             // ===== JSONBin 云端同步配置 =====
@@ -7051,12 +7062,34 @@
                 // 把"当前进展"字段中包含该阶段关键词的过滤出来
                 bizFilterPerson.value = '';
                 filterType.value = '';
+                bizHighlightKey.value = '';
                 // 用一个专用 ref 记录当前进展筛选关键字
                 bizFilterStageKeyword.value = stageObj.key;
                 switchView('商机推进情况');
             };
+
+            // 点击单条商机明细：跳转到商机推进列表，高亮该行并滚动定位
+            const drillToSingleItem = (item, stageObj) => {
+                bizFilterPerson.value = '';
+                filterType.value = '';
+                bizFilterStageKeyword.value = stageObj.key;   // 保持同阶段筛选，方便定位
+                bizHighlightKey.value = item.客户名称 || '';
+                switchView('商机推进情况');
+                // 等 DOM 渲染完再滚动到目标行
+                nextTick(() => {
+                    setTimeout(() => {
+                        const rows = document.querySelectorAll('tr.biz-highlight-row');
+                        if (rows.length > 0) {
+                            rows[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                        // 5秒后自动清除高亮（不影响筛选）
+                        setTimeout(() => { bizHighlightKey.value = ''; }, 5000);
+                    }, 200);
+                });
+            };
             const bizFilterStageKeyword = ref('');
-            const clearBizStageFilter = () => { bizFilterStageKeyword.value = ''; };
+            const bizHighlightKey = ref('');   // 高亮某条商机（客户名称）
+            const clearBizStageFilter = () => { bizFilterStageKeyword.value = ''; bizHighlightKey.value = ''; };
             const clearDateFilter = () => { filterDateStart.value = ''; filterDateEnd.value = ''; filterRecords(); };
             const clearConfigDateFilter = () => { configFilterDateStart.value = ''; configFilterDateEnd.value = ''; filterConfigs(); };
             const clearMeetingDateFilter = () => { meetingFilterDateStart.value = ''; meetingFilterDateEnd.value = ''; filterMeetings(); };
@@ -7628,7 +7661,7 @@
                 // 商机统计
                 bizPersonStats, bizPersonStatsMax, barStyle, bizTypeStats, bizStageStats, bizStageSorted, bizStageSortedMax,
                 bizFilterPerson, drillToBizPerson, clearBizPersonFilter, drillToBizType,
-                bizFilterStageKeyword, drillToStage, clearBizStageFilter,
+                bizFilterStageKeyword, drillToStage, clearBizStageFilter, drillToSingleItem, bizHighlightKey,
                 // 筛选清除方法
                 clearDateFilter, clearConfigDateFilter, clearMeetingDateFilter,
                 // 健康分
