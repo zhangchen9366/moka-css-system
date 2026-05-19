@@ -1498,7 +1498,6 @@
                 <div class="nav-group">
                     <div class="nav-title">周报管理</div>
                     <div class="nav-item" :class="{active: currentView === '填写周报'}" @click="switchView('填写周报')"><span class="icon">📝</span><span class="text">填写周报</span></div>
-                    <div class="nav-item" :class="{active: currentView === '周报历史'}" @click="switchView('周报历史')"><span class="icon">📋</span><span class="text">周报历史</span></div>
                     <div class="nav-item" :class="{active: currentView === '周报汇总'}" @click="switchView('周报汇总')"><span class="icon">📊</span><span class="text">周报汇总</span></div>
                 </div>
             </aside>
@@ -1870,53 +1869,8 @@
                         </div>
                     </div>
                 </template>
-                
-                <!-- 周报历史页面 -->
-                <template v-else-if="currentView === '周报历史'">
-                    <div class="breadcrumb"><a @click="switchView('dashboard')">首页</a><span>/</span><span>周报历史</span></div>
-                    <div class="panel">
-                        <div class="panel-header"><span class="panel-title">📋 我的周报历史</span><span style="color:#909399">{{myWeeklyHistory.length}}份</span></div>
-                        <div class="panel-body">
-                            <div class="toolbar">
-                                <div class="toolbar-left">
-                                    <select class="select" v-model="historyFilter" @change="filterHistory">
-                                        <option value="all">全部</option>
-                                        <option value="recent4">近4周</option>
-                                        <option value="recent8">近8周</option>
-                                    </select>
-                                </div>
-                                <div class="toolbar-right">
-                                    <button class="btn btn-default btn-sm" @click="exportAllWeekly">📤 导出Excel</button>
-                                </div>
-                            </div>
-                            <div class="table-wrap">
-                                <table>
-                                    <thead><tr><th>周次</th><th>咨询量</th><th>配置时长</th><th>会议时长</th><th>EVA进展</th><th>健康分</th><th>更新时间</th><th style="width:150px">操作</th></tr></thead>
-                                    <tbody>
-                                        <tr v-for="report in filteredHistory" :key="report.week">
-                                            <td>{{report.week}}</td>
-                                            <td>{{report.咨询量 || 0}}</td>
-                                            <td>{{report.配置时长 || 0}}h</td>
-                                            <td>{{report.会议时长 || 0}}h</td>
-                                            <td>{{(report.eva列表 || []).length}}条</td>
-                                            <td>{{(report.健康分列表 || []).length}}条</td>
-                                            <td>{{formatDate(report.更新时间)}}</td>
-                                            <td>
-                                                <button class="btn" style="background:none;color:#409eff;padding:4px 8px" @click="viewWeeklyReport(report)">查看</button>
-                                                <button class="btn" style="background:none;color:#67c23a;padding:4px 8px" @click="generateWeeklyReport(report)">生成</button>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div v-if="filteredHistory.length === 0" class="empty-state">
-                                <div class="icon">📋</div>
-                                <div class="text">暂无周报历史</div>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-                
+
+
                 <!-- 周报汇总页面 -->
                 <template v-else-if="currentView === '周报汇总'">
                     <div class="breadcrumb"><a @click="switchView('dashboard')">首页</a><span>/</span><span>周报汇总</span></div>
@@ -2068,7 +2022,7 @@
                         <!-- CSM维度分析：人员×阶段交叉统计 -->
                         <div style="background:var(--bg-card);border-radius:16px;padding:28px 32px;margin-top:20px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
                             <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:4px">👥 CSM维度分析</div>
-                            <div style="font-size:12px;color:var(--text-muted);margin-bottom:20px">按负责人×进展阶段交叉统计商机分布，点击行可穿透查看该人员商机</div>
+                            <div style="font-size:12px;color:var(--text-muted);margin-bottom:20px">按负责人×进展阶段交叉统计商机分布，点击数字可穿透查看对应商机</div>
                             <div style="overflow-x:auto">
                                 <table style="width:100%;border-collapse:collapse;font-size:13px">
                                     <thead>
@@ -2079,18 +2033,19 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="person in bizCsmStageMatrix.persons" :key="person" style="cursor:pointer" @click="drillToBizPerson(person)"
+                                        <tr v-for="person in bizCsmStageMatrix.persons" :key="person"
                                             @mouseenter="$event.currentTarget.style.background='#f0f5ff'" @mouseleave="$event.currentTarget.style.background=''">
-                                            <td style="padding:10px 12px;font-weight:600;color:var(--text-primary);border-bottom:1px solid #f0f0f0;white-space:nowrap;background:#f8fafc;position:sticky;left:0;z-index:1">{{person}}</td>
+                                            <td style="padding:10px 12px;font-weight:600;color:var(--text-primary);border-bottom:1px solid #f0f0f0;white-space:nowrap;background:#f8fafc;position:sticky;left:0;z-index:1;cursor:pointer" @click="drillToBizPerson(person)">{{person}}</td>
                                             <td v-for="stage in bizCsmStageMatrix.stages" :key="stage" style="padding:10px 8px;text-align:center;border-bottom:1px solid #f0f0f0;white-space:nowrap">
                                                 <span v-if="(bizCsmStageMatrix.matrix[person]||{})[stage]"
-                                                      style="display:inline-block;min-width:24px;padding:2px 6px;border-radius:6px;font-weight:600;font-size:12px"
+                                                      @click.stop="drillToBizPersonStage(person, stage)"
+                                                      style="display:inline-block;min-width:24px;padding:2px 6px;border-radius:6px;font-weight:600;font-size:12px;cursor:pointer"
                                                       :style="{background: (bizCsmStageMatrix.matrix[person]||{})[stage] >= 3 ? '#ede9fe' : '#f3f4f6', color: (bizCsmStageMatrix.matrix[person]||{})[stage] >= 3 ? '#7c3aed' : '#6b7280'}">
                                                     {{(bizCsmStageMatrix.matrix[person]||{})[stage] || '-'}}
                                                 </span>
                                                 <span v-else style="color:#d1d5db">-</span>
                                             </td>
-                                            <td style="padding:10px 12px;text-align:center;font-weight:700;color:#6366f1;border-bottom:1px solid #f0f0f0;white-space:nowrap;background:#f8fafc;position:sticky;right:0;z-index:1">
+                                            <td style="padding:10px 12px;text-align:center;font-weight:700;color:#6366f1;border-bottom:1px solid #f0f0f0;white-space:nowrap;background:#f8fafc;position:sticky;right:0;z-index:1;cursor:pointer" @click="drillToBizPerson(person)">
                                                 {{Object.values(bizCsmStageMatrix.matrix[person]||{}).reduce((a,b)=>a+b,0)}}
                                             </td>
                                         </tr>
@@ -7206,10 +7161,19 @@
             const bizFilterPerson = ref('');
             const drillToBizPerson = (name) => {
                 bizFilterPerson.value = name;
+                bizFilterStageKeyword.value = '';
                 switchView('商机推进情况');
             };
             const clearBizPersonFilter = () => {
                 bizFilterPerson.value = '';
+            };
+            // CSM维度分析：穿透到指定人员+阶段
+            const drillToBizPersonStage = (person, stageLabel) => {
+                bizFilterPerson.value = person;
+                // label→key映射
+                const labelToKey = {'合同中':'合同','已开通/完成':'已开通','试用支持中':'试用','CSM跟进中':'跟进','评估中':'评估','等待决策':'决策','无预算/暂缓':'无预算','其他':'other'};
+                bizFilterStageKeyword.value = labelToKey[stageLabel] || '';
+                switchView('商机推进情况');
             };
             const drillToBizType = (type) => {
                 filterType.value = type;
@@ -7818,7 +7782,7 @@
                 lightboxVisible, lightboxImage, openLightbox, closeLightbox, onLightboxOverlay,
                 // 商机统计
                 bizPersonStats, bizPersonStatsMax, barStyle, bizTypeStats, bizStageStats, bizStageSorted, bizStageSortedMax,
-                bizFilterPerson, drillToBizPerson, clearBizPersonFilter, drillToBizType,
+                bizFilterPerson, drillToBizPerson, drillToBizPersonStage, clearBizPersonFilter, drillToBizType,
                 bizFilterStageKeyword, drillToStage, clearBizStageFilter, drillToSingleItem, bizHighlightKey, bizCsmStageMatrix,
                 // 筛选清除方法
                 clearDateFilter, clearConfigDateFilter, clearMeetingDateFilter,
