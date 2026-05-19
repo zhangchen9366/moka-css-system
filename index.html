@@ -2019,38 +2019,68 @@
                                 </div>
                             </div>
                         </div>
-                        <!-- CSM维度分析：人员×阶段交叉统计 -->
-                        <div style="background:var(--bg-card);border-radius:16px;padding:28px 32px;margin-top:20px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
-                            <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:4px">👥 CSM维度分析</div>
-                            <div style="font-size:12px;color:var(--text-muted);margin-bottom:20px">按负责人×进展阶段交叉统计商机分布，点击数字可穿透查看对应商机</div>
-                            <div style="overflow-x:auto">
-                                <table style="width:100%;border-collapse:collapse;font-size:13px">
-                                    <thead>
-                                        <tr>
-                                            <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--text-secondary);border-bottom:2px solid #e5e7eb;white-space:nowrap;background:#f8fafc;position:sticky;left:0;z-index:1">负责人</th>
-                                            <th v-for="stage in bizCsmStageMatrix.stages" :key="stage" style="padding:10px 8px;text-align:center;font-weight:600;color:var(--text-secondary);border-bottom:2px solid #e5e7eb;white-space:nowrap;font-size:12px">{{stage}}</th>
-                                            <th style="padding:10px 12px;text-align:center;font-weight:700;color:#6366f1;border-bottom:2px solid #6366f1;white-space:nowrap;background:#f8fafc;position:sticky;right:0;z-index:1">合计</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="person in bizCsmStageMatrix.persons" :key="person"
-                                            @mouseenter="$event.currentTarget.style.background='#f0f5ff'" @mouseleave="$event.currentTarget.style.background=''">
-                                            <td style="padding:10px 12px;font-weight:600;color:var(--text-primary);border-bottom:1px solid #f0f0f0;white-space:nowrap;background:#f8fafc;position:sticky;left:0;z-index:1;cursor:pointer" @click="drillToBizPerson(person)">{{person}}</td>
-                                            <td v-for="stage in bizCsmStageMatrix.stages" :key="stage" style="padding:10px 8px;text-align:center;border-bottom:1px solid #f0f0f0;white-space:nowrap">
-                                                <span v-if="(bizCsmStageMatrix.matrix[person]||{})[stage]"
-                                                      @click.stop="drillToBizPersonStage(person, stage)"
-                                                      style="display:inline-block;min-width:24px;padding:2px 6px;border-radius:6px;font-weight:600;font-size:12px;cursor:pointer"
-                                                      :style="{background: (bizCsmStageMatrix.matrix[person]||{})[stage] >= 3 ? '#ede9fe' : '#f3f4f6', color: (bizCsmStageMatrix.matrix[person]||{})[stage] >= 3 ? '#7c3aed' : '#6b7280'}">
-                                                    {{(bizCsmStageMatrix.matrix[person]||{})[stage] || '-'}}
-                                                </span>
-                                                <span v-else style="color:#d1d5db">-</span>
-                                            </td>
-                                            <td style="padding:10px 12px;text-align:center;font-weight:700;color:#6366f1;border-bottom:1px solid #f0f0f0;white-space:nowrap;background:#f8fafc;position:sticky;right:0;z-index:1;cursor:pointer" @click="drillToBizPerson(person)">
-                                                {{Object.values(bizCsmStageMatrix.matrix[person]||{}).reduce((a,b)=>a+b,0)}}
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                        <!-- CSM维度分析：人员×阶段交叉统计（热力图风格） -->
+                        <div style="background:var(--bg-card);border-radius:20px;padding:32px;margin-top:20px;box-shadow:0 4px 24px rgba(99,102,241,0.08),0 1px 4px rgba(0,0,0,0.04);border:1px solid rgba(99,102,241,0.08)">
+                            <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+                                <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#a855f7);display:flex;align-items:center;justify-content:center;font-size:16px">👥</div>
+                                <div>
+                                    <div style="font-size:17px;font-weight:800;color:var(--text-primary);letter-spacing:0.5px">CSM 维度分析</div>
+                                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px">负责人 × 阶段交叉热力图 · 点击数字穿透查看</div>
+                                </div>
+                            </div>
+                            <!-- 热力图色阶说明 -->
+                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;margin-top:12px">
+                                <span style="font-size:10px;color:var(--text-muted)">少</span>
+                                <div style="display:flex;gap:3px">
+                                    <div style="width:20px;height:10px;border-radius:3px;background:#f1f5f9"></div>
+                                    <div style="width:20px;height:10px;border-radius:3px;background:#ddd6fe"></div>
+                                    <div style="width:20px;height:10px;border-radius:3px;background:#c4b5fd"></div>
+                                    <div style="width:20px;height:10px;border-radius:3px;background:#8b5cf6"></div>
+                                    <div style="width:20px;height:10px;border-radius:3px;background:#7c3aed"></div>
+                                </div>
+                                <span style="font-size:10px;color:var(--text-muted)">多</span>
+                            </div>
+                            <div style="overflow-x:auto;padding-bottom:4px">
+                                <div style="display:grid;min-width:720px;gap:4px;font-size:13px" :style="{gridTemplateColumns: '100px repeat(' + bizCsmStageMatrix.stages.length + ', 1fr) 72px'}">
+                                    <!-- 表头行 -->
+                                    <div style="padding:10px 8px;font-weight:700;color:var(--text-muted);font-size:11px;letter-spacing:1px">负责人</div>
+                                    <div v-for="stage in bizCsmStageMatrix.stages" :key="'h-'+stage" style="padding:10px 4px;text-align:center;font-weight:600;color:var(--text-secondary);font-size:11px">{{stage}}</div>
+                                    <div style="padding:10px 8px;text-align:center;font-weight:700;font-size:11px;color:#8b5cf6;background:linear-gradient(135deg,rgba(99,102,241,0.08),rgba(139,92,246,0.08));border-radius:8px">合计</div>
+                                    <!-- 数据行 -->
+                                    <template v-for="(person, pi) in bizCsmStageMatrix.persons" :key="person">
+                                        <div style="padding:10px 8px;font-weight:700;color:var(--text-primary);white-space:nowrap;display:flex;align-items:center;cursor:pointer;border-radius:8px;transition:background 0.2s"
+                                             @click="drillToBizPerson(person)"
+                                             @mouseenter="$event.currentTarget.style.background='rgba(99,102,241,0.06)'" @mouseleave="$event.currentTarget.style.background=''">
+                                            <div style="width:6px;height:6px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a855f7);margin-right:8px;flex-shrink:0"></div>
+                                            {{person}}
+                                        </div>
+                                        <div v-for="stage in bizCsmStageMatrix.stages" :key="person+'-'+stage"
+                                             style="padding:6px 4px;text-align:center;display:flex;align-items:center;justify-content:center;min-height:40px">
+                                            <template v-if="(bizCsmStageMatrix.matrix[person]||{})[stage]">
+                                                <div @click.stop="drillToBizPersonStage(person, stage)"
+                                                     style="width:100%;max-width:56px;padding:6px 4px;border-radius:10px;font-weight:700;cursor:pointer;transition:all 0.25s cubic-bezier(.4,0,.2,1);position:relative"
+                                                     :style="{
+                                                         background: getCsmCellBg((bizCsmStageMatrix.matrix[person]||{})[stage]),
+                                                         color: getCsmCellColor((bizCsmStageMatrix.matrix[person]||{})[stage]),
+                                                         fontSize: getCsmCellFz((bizCsmStageMatrix.matrix[person]||{})[stage]),
+                                                         boxShadow: (bizCsmStageMatrix.matrix[person]||{})[stage] >= 3 ? '0 2px 8px rgba(139,92,246,0.25)' : 'none'
+                                                     }"
+                                                     @mouseenter="$event.currentTarget.style.transform='scale(1.15)';$event.currentTarget.style.boxShadow='0 4px 16px rgba(139,92,246,0.4)'"
+                                                     @mouseleave="$event.currentTarget.style.transform='scale(1)';$event.currentTarget.style.boxShadow=(bizCsmStageMatrix.matrix[person]||{})[stage] >= 3 ? '0 2px 8px rgba(139,92,246,0.25)' : 'none'">
+                                                    {{(bizCsmStageMatrix.matrix[person]||{})[stage]}}
+                                                </div>
+                                            </template>
+                                            <template v-else>
+                                                <div style="color:#e2e8f0;font-size:12px;font-weight:400">-</div>
+                                            </template>
+                                        </div>
+                                        <div style="padding:10px 8px;text-align:center;font-weight:800;font-size:15px;color:#7c3aed;background:linear-gradient(135deg,rgba(99,102,241,0.06),rgba(139,92,246,0.06));border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center"
+                                             @click="drillToBizPerson(person)"
+                                             @mouseenter="$event.currentTarget.style.background='linear-gradient(135deg,rgba(99,102,241,0.12),rgba(139,92,246,0.12))'" @mouseleave="$event.currentTarget.style.background='linear-gradient(135deg,rgba(99,102,241,0.06),rgba(139,92,246,0.06))'">
+                                            {{Object.values(bizCsmStageMatrix.matrix[person]||{}).reduce((a,b)=>a+b,0)}}
+                                        </div>
+                                    </template>
+                                </div>
                             </div>
                         </div>
                 </template>
@@ -7124,7 +7154,18 @@
                 const allStages = ['合同中','已开通/完成','试用支持中','CSM跟进中','评估中','等待决策','无预算/暂缓','其他'];
                 return { persons, stages: allStages, matrix };
             });
-            
+
+            // CSM热力图单元格样式
+            const getCsmCellBg = (v) => {
+                if (v >= 5) return 'linear-gradient(135deg,#7c3aed,#6d28d9)';
+                if (v >= 4) return 'linear-gradient(135deg,#8b5cf6,#7c3aed)';
+                if (v >= 3) return 'linear-gradient(135deg,#a78bfa,#8b5cf6)';
+                if (v >= 2) return '#ddd6fe';
+                return '#ede9fe';
+            };
+            const getCsmCellColor = (v) => v >= 3 ? '#fff' : v >= 2 ? '#6d28d9' : '#8b5cf6';
+            const getCsmCellFz = (v) => v >= 5 ? '16px' : v >= 3 ? '15px' : '13px';
+
             // 进展阶段统计（归类）
             const STAGE_CONFIG = [
                 { key: '合同', label: '合同中', icon: '📝', bg: '#ecf5ff', color: '#3b82f6' },
@@ -7782,7 +7823,7 @@
                 lightboxVisible, lightboxImage, openLightbox, closeLightbox, onLightboxOverlay,
                 // 商机统计
                 bizPersonStats, bizPersonStatsMax, barStyle, bizTypeStats, bizStageStats, bizStageSorted, bizStageSortedMax,
-                bizFilterPerson, drillToBizPerson, drillToBizPersonStage, clearBizPersonFilter, drillToBizType,
+                bizFilterPerson, drillToBizPerson, drillToBizPersonStage, clearBizPersonFilter, drillToBizType, getCsmCellBg, getCsmCellColor, getCsmCellFz,
                 bizFilterStageKeyword, drillToStage, clearBizStageFilter, drillToSingleItem, bizHighlightKey, bizCsmStageMatrix,
                 // 筛选清除方法
                 clearDateFilter, clearConfigDateFilter, clearMeetingDateFilter,
