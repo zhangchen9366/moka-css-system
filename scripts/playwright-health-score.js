@@ -8,7 +8,7 @@ const JSONBIN_KEY = '$2a$10$94MoVDNRO0bakGDYcTsN3.BEiTefnDwwkXGndi1VuAZqxhKHhggb
 const HEALTH_BIN_ID = '6a089ef2adc21f119aad2ceb';
 const CRM_URL = 'https://crm.xiaoshouyi.com';
 
-// ===== 只抓取这些 CSS 负责人的客户数据 =====
+// ===== 只保留这些 CSS 负责人的客户 =====
 const TARGET_CSS = [
     '张辰', '宋明亮', '娄洋', '王俊朋', '曾瑞锋', '徐琪', '李晓丽',
     '金梅', '王亚淼', '周旺'
@@ -50,7 +50,8 @@ function getWeekKey() {
 
 async function main() {
     console.log('🎯 目标CSS人员：' + TARGET_CSS.join('、'));
-    console.log('   共 ' + TARGET_CSS.length + ' 人，只抓取这些人的客户健康分\n');
+    console.log('   销售易列名：ATS CSS / PP CSS / 健康分');
+    console.log('   策略：抓取全量 → 本地按人过滤\n');
 
     const browser = await webkit.launch({ headless: false });
     const context = await browser.newContext();
@@ -63,7 +64,7 @@ async function main() {
             await context.addCookies(cookies);
             console.log('✅ 已加载保存的登录状态');
         } catch (e) {
-            console.log('⚠️  加载 cookies 失败，将重新登录:', e.message);
+            console.log('⚠️  加载 cookies 失败:', e.message);
         }
     }
 
@@ -77,16 +78,12 @@ async function main() {
     }).catch(() => true);
 
     if (needLogin) {
-        console.log('🔐 需要登录，请在浏览器中手动完成登录（含2FA/验证码）...');
-        console.log('   登录成功后脚本将自动继续');
+        console.log('🔐 请在浏览器中手动登录...');
         try {
-            await page.waitForFunction(
-                () => !window.location.href.includes('login'),
-                { timeout: 300000 }
-            );
-            console.log('✅ 登录检测成功！');
+            await page.waitForFunction(() => !window.location.href.includes('login'), { timeout: 300000 });
+            console.log('✅ 登录成功！');
         } catch (e) {
-            console.log('⚠️  登录等待超时，尝试继续...');
+            console.log('⚠️  登录超时，尝试继续...');
         }
         const cookies = await context.cookies();
         fs.writeFileSync(COOKIE_FILE, JSON.stringify(cookies, null, 2));
@@ -95,327 +92,237 @@ async function main() {
         console.log('✅ 使用已保存的登录状态');
     }
 
-    // ===== 逐人抓取 =====
-    const allData = [];
-    let totalFound = 0;
-    let totalNotFound = 0;
+    // 跳转客户列表
+    const accountUrl = `${CRM_URL}/bff/neoweb#/entityGrid/account?objectApiKey=account`;
+    console.log('📋 正在跳转客户列表...');
+    await page.goto(accountUrl);
+    await sleep(6000);
 
-    for (const cssName of TARGET_CSS) {
-        console.log(`\n${'='.repeat(50)}`);
-        console.log(`🔍 正在抓取 [${cssName}] 的客户数据...`);
+    // 等待列表
+    console.log('⏳ 等待列表加载...');
+    try {
+        await page.waitForSelector('table, [class*="grid"], [class*="table"], [class*="list"]', { timeout: 30000 });
+        console.log('✅ 列表容器已加载');
+    } catch (e) {
+        console.log('⚠️  未检测到列表容器，继续...');
+    }
+    await sleep(3000);
 
-        // 跳转到客户列表页，通过URL参数设置筛选条件
-        // 销售易支持通过URL filter 参数筛选
-        const filterUrl = `${CRM_URL}/bff/neoweb#/entityGrid/account?objectApiKey=account`;
-        await page.goto(filterUrl);
-        await sleep(4000);
+    // ===== 第一步：先打印表头，确认列名 =====
+    console.log('\n===== 第一步：识别表头列名 =====');
+    const headerInfo = await page.evaluate(() => {
+        const headerCells = document.querySelectorAll('thead th, [class*="header-cell"], [class*="col-header"], [class*="header"] th');
+        const headers = Array.from(headerCells).map((h, i) => ({
+            idx: i,
+            text: h.innerText.trim().replace(/\s+/g, ' ')
+        }));
+        return headers;
+    }).catch(() => []);
 
-        // 等待列表加载
-        try {
-            await page.waitForSelector('table, [class*="grid"], [class*="table"], [class*="list"]', { timeout: 20000 });
-        } catch (e) {
-            console.log(`   ⚠️ 列表加载慢，等待中...`);
-            await sleep(5000);
-        }
-        await sleep(2000);
+    console.log('📋 当前列表的列名：');
+    headerInfo.forEach(h => console.log(`   [${h.idx}] ${h.text}`));
 
-        // ===== 在页面内设置筛选条件 =====
-        // 方案：通过销售易的筛选功能搜索负责人
-        console.log(`   📌 正在设置筛选条件：负责人 = ${cssName}`);
+    // 找关键列
+    const nameCol = headerInfo.find(h => h.text.includes('客户') || h.text.includes('名称'));
+    const healthCol = headerInfo.find(h => h.text.includes('健康分'));
+    const atsCssCol = headerInfo.find(h => h.text === 'ATS CSS' || h.text.includes('ATS CSS'));
+    const ppCssCol = headerInfo.find(h => h.text === 'PP CSS' || h.text.includes('PP CSS'));
+    // 兼容：如果列名有细微差异
+    const anyCssCol = headerInfo.find(h => /ATS\s*CSS|PP\s*CSS/i.test(h.text));
 
-        const filterSuccess = await page.evaluate((name) => {
-            // 查找筛选区域的搜索框或筛选按钮
-            // 销售易的筛选入口通常是顶部工具栏的筛选图标
-            const filterBtns = document.querySelectorAll('[class*="filter"], [class*="search"], [title*="筛选"], [title*="搜索"], [aria-label*="筛选"]');
-            
-            // 尝试找高级筛选入口
-            for (const btn of filterBtns) {
-                const text = btn.innerText || btn.title || btn.getAttribute('aria-label') || '';
-                if (text.includes('筛选') || text.includes('高级')) {
-                    btn.click();
-                    return 'clicked_filter';
-                }
-            }
+    console.log('\n🔍 关键列定位：');
+    console.log(`   客户名称：${nameCol ? `[${nameCol.idx}] ${nameCol.text}` : '❌ 未找到'}`);
+    console.log(`   健康分：${healthCol ? `[${healthCol.idx}] ${healthCol.text}` : '❌ 未找到'}`);
+    console.log(`   ATS CSS：${atsCssCol ? `[${atsCssCol.idx}] ${atsCssCol.text}` : '❌ 未找到'}`);
+    console.log(`   PP CSS：${ppCssCol ? `[${ppCssCol.idx}] ${ppCssCol.text}` : '❌ 未找到'}`);
+    console.log(`   任意CSS列：${anyCssCol ? `[${anyCssCol.idx}] ${anyCssCol.text}` : '❌ 未找到'}`);
 
-            // 尝试直接找搜索框输入
-            const searchInputs = document.querySelectorAll('input[type="text"], input[placeholder], [class*="search"] input');
-            for (const input of searchInputs) {
-                const placeholder = input.placeholder || input.getAttribute('placeholder') || '';
-                if (placeholder.includes('搜索') || placeholder.includes('查询') || placeholder.includes('客户')) {
-                    input.value = name;
-                    input.dispatchEvent(new Event('input', { bubbles: true }));
-                    input.dispatchEvent(new Event('change', { bubbles: true }));
-                    // 触发回车
-                    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
-                    return 'searched';
-                }
-            }
-            
-            return 'not_found';
-        }, cssName).catch(() => 'error');
+    // 如果健康分列没找到，提示用户手动添加
+    if (!healthCol) {
+        console.log('\n⚠️⚠️⚠️ 未检测到「健康分」列！');
+        console.log('请在浏览器中操作：');
+        console.log('   1. 找到列设置/自定义列');
+        console.log('   2. 添加「健康分」列');
+        console.log('   3. 确保列表中能看到健康分数据');
+        console.log('   4. 操作完后回到终端按回车继续');
+        await new Promise(resolve => { process.stdin.once('data', () => resolve()); });
+        // 重新读取表头
+        const headerInfo2 = await page.evaluate(() => {
+            const headerCells = document.querySelectorAll('thead th, [class*="header-cell"], [class*="col-header"], [class*="header"] th');
+            return Array.from(headerCells).map((h, i) => ({ idx: i, text: h.innerText.trim().replace(/\s+/g, ' ') }));
+        }).catch(() => []);
+        console.log('📋 更新后的列名：');
+        headerInfo2.forEach(h => console.log(`   [${h.idx}] ${h.text}`));
+    }
 
-        if (filterSuccess === 'clicked_filter') {
-            console.log(`   ✅ 已打开筛选面板，等待输入...`);
-            await sleep(2000);
+    // ===== 第二步：抓取所有页 =====
+    console.log('\n===== 第二步：开始抓取全量数据 =====');
+    const allRaw = [];
+    let pageNum = 1;
+    let hasNext = true;
+    let emptyPages = 0;
 
-            // 在筛选面板中填写条件
-            const panelFilled = await page.evaluate((name) => {
-                // 查找筛选面板内的输入框
-                const inputs = document.querySelectorAll('[class*="filter"] input, [class*="dialog"] input, [class*="modal"] input, [class*="popover"] input, [class*="drawer"] input');
-                
-                // 找"负责人"相关的行
-                const allLabels = document.querySelectorAll('[class*="filter"] label, [class*="filter"] span, [class*="dialog"] label, [class*="modal"] label');
-                for (const label of allLabels) {
-                    if (label.innerText.includes('负责人') || label.innerText.includes('CSS') || label.innerText.includes('负责')) {
-                        // 找同一行/同组的输入框
-                        const container = label.closest('tr') || label.closest('[class*="row"]') || label.closest('[class*="item"]') || label.parentElement?.parentElement;
-                        if (container) {
-                            const input = container.querySelector('input');
-                            if (input) {
-                                input.click();
-                                input.value = name;
-                                input.dispatchEvent(new Event('input', { bubbles: true }));
-                                return true;
-                            }
-                        }
-                    }
-                }
+    while (hasNext && pageNum <= 100 && emptyPages < 3) {
+        console.log(`📄 第 ${pageNum} 页...`);
 
-                // 如果找不到标签，尝试第一个可编辑输入框
-                for (const input of inputs) {
-                    if (!input.readOnly && !input.disabled && input.offsetParent !== null) {
-                        input.click();
-                        input.value = name;
-                        input.dispatchEvent(new Event('input', { bubbles: true }));
-                        return true;
-                    }
-                }
-                return false;
-            }, cssName).catch(() => false);
+        const pageData = await page.evaluate(() => {
+            const results = [];
 
-            if (panelFilled) {
-                console.log(`   ✅ 已在筛选面板输入「${cssName}」`);
-                await sleep(1000);
+            // 获取所有表头
+            const headerCells = document.querySelectorAll('thead th, [class*="header-cell"], [class*="col-header"], [class*="header"] th');
+            const headers = Array.from(headerCells).map(h => h.innerText.trim().replace(/\s+/g, ' '));
 
-                // 查找并点击「确定/查询」按钮
-                await page.evaluate(() => {
-                    const btns = document.querySelectorAll('button, [class*="btn"]');
-                    for (const btn of btns) {
-                        const text = btn.innerText.trim();
-                        if (text === '确定' || text === '查询' || text === '搜索' || text === '筛选' || text.includes('确认')) {
-                            btn.click();
-                            return;
-                        }
-                    }
-                }).catch(() => {});
-                await sleep(4000);
-            } else {
-                console.log(`   ⚠️ 未找到筛选输入框，将抓取全量数据后按人过滤`);
-            }
-        } else if (filterSuccess === 'searched') {
-            console.log(`   ✅ 已通过搜索框输入「${cssName}」`);
-            await sleep(4000);
-        } else {
-            console.log(`   ⚠️ 未找到筛选入口，将抓取全量数据后按人过滤`);
-        }
+            // 找各列索引
+            const nameIdx = headers.findIndex(h => h.includes('客户') || h.includes('名称'));
+            const healthIdx = headers.findIndex(h => h.includes('健康分'));
+            const atsCssIdx = headers.findIndex(h => h === 'ATS CSS');
+            const ppCssIdx = headers.findIndex(h => h === 'PP CSS');
 
-        // ===== 检查列 =====
-        const hasHealthCol = await page.evaluate(() => {
-            return document.body.innerText.includes('健康分');
-        }).catch(() => false);
+            // 兼容匹配
+            let cssIdx1 = atsCssIdx;
+            let cssIdx2 = ppCssIdx;
+            if (cssIdx1 < 0) cssIdx1 = headers.findIndex(h => /ATS\s*CSS/i.test(h));
+            if (cssIdx2 < 0) cssIdx2 = headers.findIndex(h => /PP\s*CSS/i.test(h));
 
-        const hasCssCol = await page.evaluate(() => {
-            const text = document.body.innerText;
-            return text.includes('负责人') || text.includes('CSS');
-        }).catch(() => false);
-
-        if (!hasHealthCol) {
-            console.log(`   ⚠️ 未检测到「健康分」列`);
-            console.log(`   请在浏览器中手动添加该列，然后按回车继续...`);
-            await new Promise(resolve => {
-                process.stdin.once('data', () => resolve());
+            // 取数据行
+            const dataRows = Array.from(document.querySelectorAll('tbody tr')).filter(tr => {
+                return tr.querySelectorAll('td').length >= 2;
             });
-        }
 
-        if (!hasCssCol) {
-            console.log(`   ⚠️ 未检测到「负责人/CSS」列`);
-            console.log(`   请在浏览器中手动添加该列，然后按回车继续...`);
-            await new Promise(resolve => {
-                process.stdin.once('data', () => resolve());
+            dataRows.forEach(row => {
+                try {
+                    const cells = row.querySelectorAll('td');
+                    const name = nameIdx >= 0 ? (cells[nameIdx]?.innerText || '').trim() : '';
+                    const healthScore = healthIdx >= 0 ? parseFloat(cells[healthIdx]?.innerText || '0') || 0 : 0;
+                    const atsCss = cssIdx1 >= 0 ? (cells[cssIdx1]?.innerText || '').trim() : '';
+                    const ppCss = cssIdx2 >= 0 ? (cells[cssIdx2]?.innerText || '').trim() : '';
+
+                    // 获取CRM链接
+                    let crmUrl = '';
+                    const nameCell = nameIdx >= 0 ? cells[nameIdx] : null;
+                    if (nameCell) {
+                        const link = nameCell.querySelector('a');
+                        if (link?.href) crmUrl = link.href;
+                    }
+
+                    if (name && name.length > 0 && name.length < 100) {
+                        results.push({ customerName: name, healthScore, atsCss, ppCss, crmUrl });
+                    }
+                } catch (e) {}
             });
-        }
 
-        // ===== 抓取该筛选结果的所有页面 =====
-        const personData = [];
-        let pageNum = 1;
-        let hasNext = true;
-        let emptyPages = 0;
-
-        while (hasNext && pageNum <= 30 && emptyPages < 2) {
-            console.log(`   📄 第 ${pageNum} 页...`);
-
-            const pageData = await page.evaluate((targetName) => {
-                const results = [];
-
-                // 获取表头
-                const headerCells = document.querySelectorAll('thead th, [class*="header-cell"], [class*="col-header"]');
-                const headers = Array.from(headerCells).map(h => h.innerText.trim());
-                
-                const nameIdx = headers.findIndex(h => h.includes('客户') || h.includes('名称'));
-                const healthIdx = headers.findIndex(h => h.includes('健康分'));
-                const cssIdx = headers.findIndex(h => h.includes('负责人') || h === 'CSS' || h.includes('CSS'));
-                
-                // 如果没找到CSS列，尝试更多匹配
-                let cssColIdx = cssIdx;
-                if (cssColIdx < 0) {
-                    cssColIdx = headers.findIndex(h => h.includes('负责') || h.includes('Owner') || h.includes('所属'));
-                }
-
-                const dataRows = Array.from(document.querySelectorAll('tbody tr')).filter(tr => {
-                    const cells = tr.querySelectorAll('td');
-                    return cells.length >= 2;
-                });
-
-                dataRows.forEach(row => {
-                    try {
-                        const cells = row.querySelectorAll('td');
-                        const name = nameIdx >= 0 ? (cells[nameIdx] || {}).innerText || '' : '';
-                        const healthScore = healthIdx >= 0 ? parseFloat((cells[healthIdx] || {}).innerText) || 0 : 0;
-                        const css = cssColIdx >= 0 ? ((cells[cssColIdx] || {}).innerText || '').trim() : '';
-
-                        let crmUrl = '';
-                        const nameCell = nameIdx >= 0 ? cells[nameIdx] : null;
-                        if (nameCell) {
-                            const link = nameCell.querySelector('a');
-                            if (link && link.href) crmUrl = link.href;
-                        }
-
-                        if (name && name.length > 0 && name.length < 100) {
-                            results.push({
-                                customerName: name.trim(),
-                                healthScore: healthScore,
-                                css: css,
-                                crmUrl: crmUrl
-                            });
-                        }
-                    } catch (e) { /* 忽略单行错误 */ }
-                });
-                return { results, nameIdx, healthIdx, cssColIdx, headers };
-            }, cssName).catch(e => { console.log('   页面解析出错:', e.message); return { results: [] }; });
-
-            if (pageData.results.length > 0) {
-                personData.push(...pageData.results);
-                emptyPages = 0;
-                console.log(`      ✅ ${pageData.results.length} 条`);
-            } else {
-                emptyPages++;
-                console.log(`      ⬜ 0 条`);
-            }
-
-            // 下一页
-            hasNext = await page.evaluate(() => {
-                // 销售易分页按钮
-                const btns = document.querySelectorAll('button, [class*="pager"] a, [class*="pagination"] li, [class*="page-btn"]');
-                for (const btn of btns) {
-                    const text = (btn.innerText || '').trim();
-                    if ((text === '下一页' || text === '>' || text.includes('next')) && !btn.disabled && !btn.classList.contains('disabled') && !btn.classList.contains('is-disabled')) {
-                        btn.click();
-                        return true;
-                    }
-                }
-                // 尝试 SVG 图标类的下一页按钮
-                const nextIcons = document.querySelectorAll('[class*="next"], [class*="right"]');
-                for (const el of nextIcons) {
-                    if (el.offsetParent !== null && !el.disabled && !el.classList.contains('disabled')) {
-                        el.click();
-                        return true;
-                    }
-                }
-                return false;
-            }).catch(() => false);
-
-            if (hasNext) {
-                await sleep(2500);
-                pageNum++;
-            }
-        }
-
-        // ===== 按人过滤（双保险） =====
-        const filtered = personData.filter(item => {
-            // 如果页面已有筛选，大部分数据应该已经是对的了
-            // 但为了准确性，还是做一次二次过滤
-            const cssMatch = item.css.includes(cssName) || 
-                             (!item.css && item.customerName); // 没有CSS列时保留所有
-            return cssMatch;
+            return results;
+        }).catch(e => {
+            console.log('   ⚠️ 解析出错:', e.message);
+            return [];
         });
 
-        if (filtered.length > 0) {
-            console.log(`   ✅ [${cssName}]：匹配 ${filtered.length} 条客户数据`);
-            allData.push(...filtered);
-            totalFound += filtered.length;
-        } else if (personData.length > 0) {
-            // 如果精确匹配不到，但抓到了数据，说明CSS列可能没匹配上
-            // 检查 personData 中的 css 字段
-            const cssValues = [...new Set(personData.map(d => d.css).filter(Boolean))];
-            console.log(`   ⚠️ [${cssName}]：抓到 ${personData.length} 条但未精确匹配`);
-            console.log(`      页面中的CSS字段值：${cssValues.slice(0, 5).join(', ')}`);
-            console.log(`      保留全部 ${personData.length} 条（可能在筛选页面已过滤）`);
-            allData.push(...personData);
-            totalFound += personData.length;
+        if (pageData.length > 0) {
+            allRaw.push(...pageData);
+            emptyPages = 0;
+            console.log(`   ✅ ${pageData.length} 条（累计 ${allRaw.length}）`);
         } else {
-            console.log(`   ❌ [${cssName}]：未抓取到数据`);
-            totalNotFound++;
+            emptyPages++;
+            console.log(`   ⬜ 0 条`);
+        }
+
+        // 下一页
+        hasNext = await page.evaluate(() => {
+            // 方式1：按钮文字匹配
+            const allBtns = document.querySelectorAll('button, a, [role="button"], li[class*="page"], span[class*="page"]');
+            for (const btn of allBtns) {
+                const text = (btn.innerText || '').trim();
+                const cls = btn.className || '';
+                if ((text === '下一页' || text === '>' || text.includes('next') || text === '›') 
+                    && !btn.disabled 
+                    && !cls.includes('disabled') 
+                    && !cls.includes('is-disabled')
+                    && btn.offsetParent !== null) {
+                    btn.click();
+                    return true;
+                }
+            }
+            return false;
+        }).catch(() => false);
+
+        if (hasNext) {
+            await sleep(2500);
+            pageNum++;
         }
     }
 
-    console.log(`\n${'='.repeat(50)}`);
-    console.log(`📊 抓取完成！共 ${allData.length} 条客户数据（${TARGET_CSS.length - totalNotFound}/${TARGET_CSS.length} 人有数据）`);
+    console.log(`\n📊 全量抓取完成：共 ${allRaw.length} 条，${pageNum} 页`);
 
-    if (allData.length === 0) {
-        console.log('❌ 未抓取到任何数据，浏览器将保持打开以便排查');
+    // ===== 第三步：按人过滤 =====
+    console.log('\n===== 第三步：按CSS人员过滤 =====');
+    const filtered = allRaw.filter(item => {
+        const atsMatch = item.atsCss && TARGET_CSS.some(t => item.atsCss.includes(t));
+        const ppMatch = item.ppCss && TARGET_CSS.some(t => item.ppCss.includes(t));
+        return atsMatch || ppMatch;
+    });
+
+    // 合并为统一格式
+    const finalData = filtered.map(item => {
+        // 判断属于哪个团队
+        const isAts = TARGET_CSS.slice(0, 7).some(t => (item.atsCss || '').includes(t));
+        const isPp = TARGET_CSS.slice(7).some(t => (item.ppCss || '').includes(t));
+        const css = isAts ? item.atsCss : (isPp ? item.ppCss : (item.atsCss || item.ppCss || ''));
+        return {
+            customerName: item.customerName,
+            healthScore: item.healthScore,
+            css: css.trim(),
+            crmUrl: item.crmUrl
+        };
+    });
+
+    console.log(`✅ 过滤后：${finalData.length} 条（从 ${allRaw.length} 条中筛选）`);
+
+    if (finalData.length === 0) {
+        console.log('\n❌ 过滤后数据为空！打印前5条原始数据供排查：');
+        allRaw.slice(0, 5).forEach(d => {
+            console.log(`   客户：${d.customerName} | ATS CSS：[${d.atsCss}] | PP CSS：[${d.ppCss}] | 健康分：${d.healthScore}`);
+        });
+        console.log('\n浏览器保持打开，请检查列名是否正确，然后关闭终端结束');
         await sleep(300000);
         await browser.close();
         return;
     }
 
-    // 打印摘要
+    // 按人汇总
     const summary = {};
-    allData.forEach(d => {
+    finalData.forEach(d => {
         const key = d.css || '未知';
         summary[key] = (summary[key] || 0) + 1;
     });
-    console.log('\n📋 各人数据量：');
+    console.log('\n📋 各人客户数：');
     Object.entries(summary).sort((a, b) => b[1] - a[1]).forEach(([name, count]) => {
         console.log(`   ${name}：${count} 条`);
     });
 
-    // 构建快照
+    // 写入 JSONBin
     const snapshot = {
         week: getWeekKey(),
         timestamp: new Date().toISOString(),
         threshold: 4,
-        data: allData
+        data: finalData
     };
 
-    // 写入 JSONBin
     console.log('\n💾 正在写入 JSONBin...');
     try {
         const binData = await loadBin();
         binData.record.snapshots = binData.record.snapshots || [];
         binData.record.snapshots.push(snapshot);
-
         if (binData.record.snapshots.length > 12) {
             binData.record.snapshots = binData.record.snapshots.slice(-12);
         }
-
         await saveBin(binData.record);
-        console.log('✅ 数据已写入 JSONBin！快照周次：', snapshot.week);
-        console.log('   在网页「健康分看板」点🔄刷新即可看到数据');
+        console.log('✅ 写入成功！周次：' + snapshot.week);
+        console.log('   在网页「健康分看板」点🔄刷新即可查看');
     } catch (err) {
-        console.error('❌ 写入 JSONBin 失败：', err.message);
-        console.log('   数据已保存在本地，可手动导入');
-        fs.writeFileSync(path.join(__dirname, 'health-snapshot-' + getWeekKey() + '.json'), JSON.stringify(snapshot, null, 2));
-        console.log('   本地文件：' + path.join(__dirname, 'health-snapshot-' + getWeekKey() + '.json'));
+        console.error('❌ JSONBin写入失败:', err.message);
+        const localPath = path.join(__dirname, `health-snapshot-${getWeekKey()}.json`);
+        fs.writeFileSync(localPath, JSON.stringify(snapshot, null, 2));
+        console.log('   已保存到本地：' + localPath);
     }
 
     await browser.close();
