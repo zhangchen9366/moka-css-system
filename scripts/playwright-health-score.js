@@ -14,20 +14,17 @@ const TARGET_CSS = [
     '金梅', '王亚淼', '周旺'
 ];
 
-function sleep(ms) {
-    return new Promise(r => setTimeout(r, ms));
-}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function loadBin() {
-    const res = await fetch(`${JSONBIN_API}/b/${HEALTH_BIN_ID}/latest`, {
-        headers: { 'X-Master-Key': JSONBIN_KEY }
-    });
+    const res = await fetch(`${JSONBIN_API}/b/${HEALTH_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
     if (!res.ok) throw new Error(`读取Bin失败: ${res.status}`);
     return await res.json();
 }
 async function saveBin(data) {
     const res = await fetch(`${JSONBIN_API}/b/${HEALTH_BIN_ID}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
         body: JSON.stringify(data)
     });
     if (!res.ok) throw new Error(`写入Bin失败: ${res.status}`);
@@ -47,7 +44,6 @@ async function main() {
     const context = await browser.newContext();
     const page = await context.newPage();
 
-    // cookies
     if (fs.existsSync(COOKIE_FILE)) {
         try { await context.addCookies(JSON.parse(fs.readFileSync(COOKIE_FILE, 'utf8'))); console.log('✅ cookie加载成功'); } catch(e){ console.log('⚠️ cookie加载失败'); }
     }
@@ -66,252 +62,262 @@ async function main() {
     // 跳转客户列表
     console.log('\n📋 跳转客户列表...');
     await page.goto(`${CRM_URL}/bff/neoweb#/entityGrid/account?objectApiKey=account`);
-    await sleep(6000);
-
-    // 等数据行出现
+    
+    // 等待数据出现（轮询检测）
     console.log('⏳ 等待数据加载...');
-    for(let w=0; w<10; w++) {
+    for(let w=0; w<15; w++) {
         await sleep(2000);
         const ready = await page.evaluate(() => {
-            const text = document.body.innerText;
-            return text.includes('客户名称') && text.includes('PP CSS') && text.includes('最新健康分') && /\d+\.\d+/.test(text);
+            const t = document.body.innerText;
+            return t.includes('客户名称') && t.includes('PP CSS') && t.includes('最新健康分') && /\d+\.\d+/.test(t);
         }).catch(()=>false);
-        if(ready) break;
-        console.log(`   等待中... (${(w+1)*2}s)`);
+        if(ready) { console.log('   ✅ 数据已加载'); break; }
+        console.log(`   ...等待中 (${(w+1)*2}s)`);
     }
     await sleep(2000);
 
-    // ===== 获取表头（多种方式） =====
-    console.log('\n📋 识别列头...');
-    const colInfo = await page.evaluate(() => {
-        // 方式1：标准表头
-        let headerCells = Array.from(document.querySelectorAll('thead th, [class*="header-cell"], [class*="col-header"]'));
+    // ===== 核心：用多种策略提取数据 =====
+    // 策略A：尝试找到数据行容器并提取
+    // 策略B：如果A失败，直接dump HTML分析结构
+
+    console.log('\n🔍 分析页面DOM结构...');
+
+    // 先dump一下列表区域的HTML结构
+    const domAnalysis = await page.evaluate(() => {
+        // 找包含"杭州拼吖"或"全部客户"的区域
+        const allDivs = document.querySelectorAll('[class*="grid"], [class*="list"], [class*="table"], [class*="body"], [class*="content"], [class*="row"]');
         
-        // 方式2：如果方式1没找到，找第一行的特殊元素
-        if(headerCells.length < 3) {
-            headerCells = Array.from(document.querySelectorAll('[class*="head"] th, [class*="title"]'));
-        }
-        // 方式3：找包含"序号"或"客户名称"的元素所在的行
-        if(headerCells.length < 3) {
-            const allEls = document.querySelectorAll('*');
-            for(const el of allEls) {
-                if(el.innerText === '序号' && el.offsetParent !== null) {
-                    const parentRow = el.closest('tr')?.closest('thead') || el.closest('tr')?.parentElement;
-                    if(parentRow) {
-                        headerCells = Array.from(parentRow.children);
-                    }
-                    break;
-                }
+        const results = [];
+        for(const div of allDivs) {
+            const childCount = div.children.length;
+            const tag = div.tagName;
+            const cls = div.className?.substring(0,80) || '';
+            const hasData = /\d+\.\d{2}|PP\s*CSS|ATS\s*CSS/.test(div.innerText);
+            
+            if(hasData && childCount > 2) {
+                results.push({
+                    tag,
+                    cls: cls.replace(/\s+/g,' ').substring(0,100),
+                    childCount,
+                    textPreview: div.innerText.substring(0, 150).replace(/\s+/g,' ')
+                });
             }
         }
-
-        return Array.from(headerCells).map((el,i) => ({
-            idx: i,
-            text: el.innerText.trim().replace(/\s+/g,' ')
-        }));
+        return results.slice(0, 10);
     }).catch(() => []);
 
-    console.log('   检测到的列：');
-    colInfo.forEach(c => console.log(`     [${c.idx}] "${c.text}"`));
-
-    // 定位关键列索引
-    const nameIdx = colInfo.findIndex(c => c.text.includes('客户名称')) ?? -1;
-    const ppCssIdx = colInfo.findIndex(c => c.text === 'PP CSS' || /^PP\s*CSS$/i.test(c.text));
-    const atsCssIdx = colInfo.findIndex(c => c.text === 'ATS CSS' || /^ATS\s*CSS$/i.test(c.text));
-    const healthIdx = colInfo.findIndex(c => c.text === '最新健康分' || c.text.includes('最新健康分'));
-
-    console.log(`\n   🔍 列索引定位：`);
-    console.log(`      客户名称 → [${nameIdx}]`);
-    console.log(`      PP CSS   → [${ppCssIdx}]`);
-    console.log(`      ATS CSS  → [${atsCssIdx}]`);
-    console.log(`      最新健康分→ [${healthIdx}]`);
-
-    if(nameIdx < 0 || healthIdx < 0) {
-        console.log('\n❌ 关键列未找到！');
-        console.log('请确保浏览器里客户列表显示了「客户名称」和「最新健康分」列');
-        console.log('按回车继续尝试抓取（可能使用备用方案）...');
-        await new Promise(resolve => process.stdin.once('data', () => resolve()));
+    if(domAnalysis.length > 0) {
+        console.log('   📦 找到可能的数据容器：');
+        domAnalysis.forEach(d => {
+            console.log(`      <${d.tag}> class="${d.cls}" children=${d.childCount}`);
+            console.log(`         文本: "${d.textPreview}"`);
+        });
+    } else {
+        console.log('   ⚠️ 未通过class匹配到容器，尝试其他方式...');
     }
 
-    // ===== 开始翻页抓取 =====
-    console.log('\n' + '='.repeat(50));
-    console.log('📊 开始逐页抓取...');
+    // ===== 抓取数据：核心函数 =====
+    console.log('\n📊 开始抓取...');
+
     const allRaw = [];
+
+    // 获取总页数
+    const pageInfo = await page.evaluate(() => {
+        const t = document.body.innerText;
+        const m = t.match(/共\s*(\d+)\s*条/);
+        const p = t.match(/(\d+)\s*页/);
+        return { total: m ? parseInt(m[1]) : 0 };
+    }).catch(() => ({ total: 0 }));
+    const totalPages = Math.ceil(pageInfo.total / 50) || 14;
+    console.log(`   总计约 ${pageInfo.total} 条，${totalPages} 页\n`);
+
     let pageNum = 1;
 
-    // 先获取总记录数
-    const totalCount = await page.evaluate(() => {
-        const text = document.body.innerText;
-        // 匹配 "共 673 条"
-        const m = text.match(/共\s*(\d+)\s*条/);
-        return m ? parseInt(m[1]) : 0;
-    }).catch(() => 0);
-    const totalPages = Math.ceil(totalCount / 50);
-    console.log(`   总计约 ${totalCount} 条，约 ${totalPages} 页\n`);
+    while(pageNum <= totalPages + 3) {
+        console.log(`   📄 第 ${pageNum} 页...`);
 
-    while(pageNum <= totalPages + 5) { // 多给几页余量
-        console.log(`   📄 第 ${pageNum} / ~${totalPages} 页...`);
+        const pageData = await page.extractDataFromPage().catch(() => null);
 
-        const pageData = await page.evaluate((colMap) => {
-            const results = [];
+        if(!pageData) {
+            // 使用 evaluate 提取 —— 核心策略：遍历所有可能的行元素
+            const extracted = await page.evaluate(() => {
+                const results = [];
 
-            // 销售易的数据行选择器——尝试多种
-            let dataRows = [];
-            
-            // 尝试1：tbody tr
-            const tbodyRows = Array.from(document.querySelectorAll('tbody tr')).filter(tr => tr.querySelectorAll('td').length >= 3);
-            if(tbodyRows.length > 0) dataRows = tbodyRows;
+                // === 策略1：找所有看起来像行的元素 ===
+                // 销售易的每行数据通常是一个包含多个子元素的容器
+                // 每行有：序号、客户名称、M、PP CSS、ATS CSS、最新健康分、...
+                
+                // 方法：找所有包含数字序号(1,2,3...)且长度较短的文本块
+                // 这些就是数据行
+                
+                // 更直接的方法：找整个表格区域，获取它的innerHTML然后解析
+                const bodyText = document.body.innerText;
+                
+                // 找"全部客户"之后、"创建日期"附近开始的数据区域
+                // 数据格式大概是：
+                // 1  杭州拼吖信息科技有限公司  ... 黄文鑫  5.09  张云芳  已签约
+                // 2  江苏月半湖生物科技...  ...
+                
+                // 尝试通过DOM结构提取
+                // 销售易 neoweb 的表格通常在某个特定的容器内
+                const possibleContainers = [
+                    document.querySelector('[class*="virtual-list"]'),
+                    document.querySelector('[class*="scroll"]'),
+                    document.querySelector('[class*="body-wrapper"]'),
+                    document.querySelector('[class*="table-body"]'),
+                    document.querySelector('[class*="grid-body"]'),
+                    document.querySelector('[class*="entity-grid"]'),
+                ].filter(Boolean);
 
-            // 尝试2：带row class的div
-            if(dataRows.length === 0) {
-                const divRows = Array.from(document.querySelectorAll('[class*="row"][class*="item"], [class*="list-row"]'));
-                if(divRows.length > 0) dataRows = divRows;
-            }
-
-            // 尝试3：所有tr排除header
-            if(dataRows.length === 0) {
-                dataRows = Array.from(document.querySelectorAll('table tr')).filter(tr => {
-                    return !tr.closest('thead') && tr.querySelectorAll('td').length >= 3;
-                });
-            }
-
-            // 尝试4：直接从页面文本区域提取（最暴力但最稳）
-            if(dataRows.length === 0) {
-                // 不行了，返回空
-                return [];
-            }
-
-            // 对每一行提取字段
-            for(const row of dataRows) {
-                try {
-                    const cells = row.tagName === 'TR' 
-                        ? Array.from(row.querySelectorAll('td'))
-                        : Array.from(row.querySelectorAll('[class*="cell"], [class*="column"], td'));
-
-                    if(cells.length < 3) continue;
-
-                    const getName = (idx) => idx >= 0 && idx < cells.length ? (cells[idx]?.innerText||'').trim() : '';
-                    const getNum = (idx) => idx >= 0 && idx < cells.length ? parseFloat(cells[idx]?.innerText||'0') || 0 : 0;
+                // 如果找到了容器
+                for(const container of possibleContainers) {
+                    // 在容器内找所有子项（行）
+                    const items = container.querySelectorAll(':scope > *, :scope > * > *, [class*="row"], [class*="item"]');
                     
-                    const customerName = getName(colMap.nameIdx);
-                    const ppCss = getName(colMap.ppCssIdx);
-                    const atsCss = getName(colMap.atssCssIdx);
-                    const healthScore = getNum(colMap.healthIdx);
-
-                    // 取链接
-                    let crmUrl = '';
-                    const nameCell = colMap.nameIdx >= 0 ? cells[colMap.nameIdx] : null;
-                    if(nameCell) {
-                        const link = nameCell.querySelector('a');
-                        if(link?.href) crmUrl = link.href;
+                    for(const item of items) {
+                        const txt = item.innerText || '';
+                        // 数据行的特征：包含公司名（通常较长）和数字
+                        if(txt.length > 20 && txt.length < 300 && /\d/.test(txt)) {
+                            // 进一步验证是否是数据行
+                            if(/有限公司|集团|公司|科技|股份|生物|汽车|网络|电子/.test(txt)) {
+                                results.push({ rawText: txt.trim(), html: item.innerHTML.substring(0, 500) });
+                                break; // 一个item就够了，避免重复
+                            }
+                        }
                     }
+                    if(results.length > 0) break; // 找到一个容器的数据就够
+                }
 
-                    if(customerName && customerName.length > 0 && customerName.length < 100) {
-                        results.push({ customerName, healthScore, ppCss, atsCss, crmUrl });
+                // === 策略2：如果上面没找到，暴力扫描所有可见元素 ===
+                if(results.length === 0) {
+                    const allElements = document.querySelectorAll('*');
+                    for(const el of allElements) {
+                        // 只看有足够子元素的（可能是行）
+                        if(el.children.length >= 5 && el.children.length <= 15 && el.offsetParent !== null) {
+                            const txt = (el.innerText||'').trim();
+                            if(txt.length > 30 && txt.length < 400 && /有限公司|集团|公司|科技|股份/.test(txt) && /\d\.\d+/.test(txt)) {
+                                results.push({ rawText: txt, html: el.innerHTML.substring(0, 800), strategy: 'brute_force' });
+                                break;
+                            }
+                        }
                     }
-                } catch(e) {}
+                }
+
+                return results;
+            }).catch(e => ({ error: e.message }));
+
+            if(extracted.error) {
+                console.log(`      ⚠️ 解析异常: ${extracted.error}`);
+            } else if(extracted.length > 0) {
+                // 解析原始文本为结构化数据
+                for(const item of extracted) {
+                    // 原始文本大概长这样：
+                    // "1 杭州拼吖信息科技有限公司  $  邵顺  黄文鑫  5.09  张云芳  已签约"
+                    const parsed = parseRowText(item.rawText);
+                    if(parsed) allRaw.push(parsed);
+                }
+                
+                console.log(`      ✅ 提取 ${extracted.length} 条（累计 ${allRaw.length}）`);
+            } else {
+                console.log(`      ⬜ 本页未提取到数据`);
             }
-            return results;
-        }, { nameIdx, ppCssIdx, atssCssIdx: atsCssIdx, healthIdx }).catch(e => {
-            console.log(`   ⚠️ 页面解析异常: ${e.message}`);
-            return [];
-        });
-
-        if(pageData.length > 0) {
-            allRaw.push(...pageData);
-            console.log(`      ✅ +${pageData.length} 条（累计 ${allRaw.length}）`);
         } else {
-            console.log(`      ⬜ 0 条`);
-            // 连续3页为空就停
-            if(allRaw.length > 0) break;
+            allRaw.push(...pageData);
+            console.log(`      ✅ +${pageData.length}（累计 ${allRaw.length}）`);
         }
 
-        // 点击下一页
-        const clickedNext = await page.evaluate(() => {
-            // 查找所有可能的下一页按钮
-            const candidates = [...document.querySelectorAll('button, a, li, span, div')]
-                .filter(el => {
-                    const text = (el.innerText||'').trim();
-                    const cls = (el.className||'');
-                    // 匹配：下一页、>、›、next
-                    if(text === '下一页' || text === '>' || text === '›' || text.toLowerCase().includes('next')) {
-                        return !el.disabled 
-                            && !cls.includes('disabled')
-                            && !cls.includes('is-disabled')
-                            && el.offsetParent !== null; // 可见
-                    }
-                    // 也匹配右箭头图标
-                    if(cls.includes('next') || cls.includes('right')) {
-                        return !el.disabled && el.offsetParent !== null;
-                    }
-                    return false;
-                });
-            
-            if(candidates.length > 0) {
-                candidates[0].click();
-                return true;
-            }
+        // 下一页
+        const hasNext = await page.evaluate(() => {
+            const els = [...document.querySelectorAll('*')].filter(el => {
+                const t = (el.innerText||'').trim();
+                const c = el.className||'';
+                const isNext = t==='下一页'||t==='>'||t==='›'||t.toLowerCase()==='next';
+                const isVisible = el.offsetParent !== null;
+                const isEnabled = !el.disabled && !/(disabled|is-disabled)/.test(c);
+                return isNext && isVisible && isEnabled && el.children.length === 0; // 叶子节点按钮
+            });
+            if(els.length > 0) { els[0].click(); return true; }
             return false;
         }).catch(() => false);
 
-        if(!clickedNext) {
-            console.log('   ⏹️ 已到达最后一页');
-            break;
+        if(!hasNext) { 
+            console.log('   ⏹️ 到达末页'); 
+            if(allRaw.length > 0) break;
         }
-
-        await sleep(3000); // 翻页后等数据加载
+        
+        await sleep(2500);
         pageNum++;
     }
 
-    console.log(`\n📊 抓取完成：共 ${allRaw.length} 条原始数据`);
+    console.log(`\n📊 原始抓取：${allRaw.length} 条`);
 
     if(allRaw.length === 0) {
-        console.log('\n❌ 一条都没抓到。打印前3行原始HTML供排查...\n');
-        const sample = await page.evaluate(() => {
-            const rows = document.querySelectorAll('tbody tr');
-            if(rows.length > 0) {
-                return Array.from(rows).slice(0, 3).map(r => r.innerText.substring(0, 200));
+        console.log('\n❌ 仍然没抓到！执行完整DOM诊断...');
+        
+        const diag = await page.evaluate(() => {
+            // 打印更详细的HTML结构
+            // 找到包含"全部客户"或"序号"的最近父级
+            const target = Array.from(document.querySelectorAll('*')).find(el => 
+                el.innerText?.includes('全部客户') && el.children?.length > 5
+            );
+            
+            if(target) {
+                return {
+                    found: true,
+                    tagName: target.tagName,
+                    className: target.className?.substring(0, 150),
+                    childCount: target.children.length,
+                    outerHTML: target.outerHTML.substring(0, 3000),
+                    innerHTML: target.innerHTML.substring(0, 3000)
+                };
             }
-            // 如果没有tbody，取body部分文字
-            return ['无tbody元素', 'body前200字:', document.body.innerText.substring(0, 500)];
-        }).catch(() => ['无法获取']);
-        sample.forEach(s => console.log('  ', s));
-        console.log('\n浏览器保持打开，手动检查后关闭终端结束');
-        await sleep(300000);
+            return { found: false, bodySnippet: document.body.innerHTML.substring(0, 5000) };
+        }).catch(() => ({ error: 'evaluate failed' }));
+
+        console.log('\n===== DOM诊断结果 =====');
+        if(diag.found) {
+            console.log(`标签：<${diag.tagName}>`);
+            console.log(`类名：${diag.className}`);
+            console.log(`子元素数：${diag.childCount}`);
+            console.log(`\n--- 外层HTML前3000字符 ---\n${diag.outerHTML}`);
+        } else if(diag.bodySnippet) {
+            console.log(`\n--- body前5000字符 ---\n${diag.bodySnippet}`);
+        } else {
+            console.log(JSON.stringify(diag));
+        }
+
+        // 保存诊断结果到文件
+        const diagFile = path.join(__dirname, 'dom-diagnosis.json');
+        fs.writeFileSync(diagFile, JSON.stringify(diag, null, 2));
+        console.log(`\n💾 诊断结果已保存到：${diagFile}`);
+
+        console.log('\n浏览器保持打开。请将终端输出截图发给我。');
+        await sleep(600000);
         await browser.close();
         return;
     }
 
     // ===== 过滤目标人员 =====
-    console.log('\n===== 按 CSS 人员过滤 =====');
+    console.log('\n===== 过滤 =====');
     const filtered = allRaw.filter(item => {
-        const matchPp = item.ppCss && TARGET_CSS.some(t => item.ppCss.trim().includes(t));
-        const matchAts = item.atsCss && TARGET_CSS.some(t => item.atsCss.trim().includes(t));
-        return matchPp || matchAts;
+        const ppMatch = TARGET_CSS.some(t => (item.ppCss||'').includes(t));
+        const atsMatch = TARGET_CSS.some(t => (item.atsCss||'').includes(t));
+        return ppMatch || atsMatch;
     });
 
-    const finalData = filtered.map(item => ({
-        customerName: item.customerName,
-        healthScore: item.healthScore,
-        css: (item.atsCss || item.ppCss || '').trim(),
-        crmUrl: item.crmUrl
+    const finalData = filtered.map(d => ({
+        customerName: d.customerName,
+        healthScore: d.healthScore,
+        css: ((d.atsCss || d.ppCss || '')+'').trim(),
+        crmUrl: d.crmUrl || ''
     }));
 
-    console.log(`✅ 过滤结果：${finalData.length} 条`);
-
-    if(finalData.length === 0) {
-        console.log('❌ 过滤后为空！打印原始数据的PP CSS和ATS CSS值供排查：');
-        allRaw.slice(0, 10).forEach(d => {
-            console.log(`  "${d.customerName}" | PP:["${d.ppCss}"] ATS:["${d.atsCss}"] 健康:${d.healthScore}`);
-        });
-        await sleep(10000);
-    } else {
+    console.log(`✅ 过滤后：${finalData.length} 条`);
+    if(finalData.length > 0) {
         const summary = {};
         finalData.forEach(d => { summary[d.css] = (summary[d.css]||0)+1; });
-        console.log('\n📋 各人客户数：');
         Object.entries(summary).sort((a,b)=>b[1]-a[1]).forEach(([n,c]) => console.log(`   ${n}：${c}`));
 
-        // 写入 JSONBin
         const snapshot = { week: getWeekKey(), timestamp: new Date().toISOString(), threshold: 4, data: finalData };
         console.log('\n💾 写入 JSONBin...');
         try {
@@ -320,17 +326,79 @@ async function main() {
             bin.record.snapshots.push(snapshot);
             if(bin.record.snapshots.length > 12) bin.record.snapshots = bin.record.snapshots.slice(-12);
             await saveBin(bin.record);
-            console.log('✅ 成功！周次：'+snapshot.week+'，点网页🔄刷新查看');
+            console.log('✅ 成功！周次：'+snapshot.week+' → 点网页🔄刷新查看');
         } catch(err) {
-            console.error('❌ JSONBin失败:', err.message);
-            const localFile = path.join(__dirname, `health-${getWeekKey()}.json`);
-            fs.writeFileSync(localFile, JSON.stringify(snapshot, null, 2));
-            console.log('已保存本地：'+localFile);
+            console.error('❌ 失败:', err.message);
+            fs.writeFileSync(path.join(__dirname, `health-${getWeekKey()}.json`), JSON.stringify(snapshot,null,2));
         }
     }
 
     await browser.close();
     console.log('\n🎉 完成！');
+}
+
+// ===== 从一行原始文本解析出字段 =====
+function parseRowText(text) {
+    // 清理多余空白
+    const cleaned = text.replace(/\t/g, ' ').replace(/  +/g, ' ').trim();
+    
+    // 尝试按已知列顺序解析
+    // 列：序号 | 客户名称 | M(图标?) | PP CSS | ATS CSS | 最新健康分 | 客户所有人 | 状态
+    
+    // 策略：找数字健康分数（如 5.09, 2.50），它前面应该是CSS人名，再前面是客户名称
+    const healthMatch = cleaned.match(/(\d+\.\d+)/);
+    if(!healthMatch) return null;
+    
+    const healthScore = parseFloat(healthMatch[1]);
+    
+    // 以健康分为锚点向前向后切分
+    const parts = cleaned.split(/\s+/);
+    
+    let customerName = '';
+    let ppCss = '', atsCss = '';
+    let crmUrl = '';
+
+    // 找健康分的位置
+    const healthIdx = parts.findIndex(p => /^\d+\.\d+$/.test(p));
+    if(healthIdx < 2) return null; // 至少要有前面的字段
+
+    // 健康分后面的是：客户所有人、状态
+    // 健康分前面紧邻的是：ATS CSS、PP CSS、客户名称
+    
+    // 从后往前推：
+    // parts[healthIdx] = 健康分
+    // parts[healthIdx-1] 可能是 ATS CSS 人名
+    // parts[healthIdx-2] 可能是 PP CSS 人名
+    // 再往前是客户名称等
+
+    // 尝试识别模式：名字通常是中文2-4字
+    const isChineseName = s => /^[\u4e00-\u9fa5]{2,4}$/.test(s);
+
+    // 从健康分位置往前找两个中文名作为CSS
+    const candidatesBefore = [];
+    for(let i = healthIdx - 1; i >= Math.max(0, healthIdx - 5); i--) {
+        if(isChineseName(parts[i])) candidatesBefore.push({ name: parts[i], idx: i });
+    }
+
+    if(candidatesBefore.length >= 2) {
+        atsCss = candidatesBefore[0].name;  // 离健康分最近的第一个
+        ppCss = candidatesBefore[1].name;  // 第二个
+        
+        // 客户名称是从开头到ppCss之前的部分
+        const nameEndIdx = candidatesBefore[1].idx;
+        customerName = parts.slice(1, nameEndIdx).join(' '); // 跳过开头的序号
+    } else if(candidatesBefore.length === 1) {
+        // 只找到一个CSS名
+        atsCss = candidatesBefore[0].name;
+        customerName = parts.slice(1, candidatesBefore[0].idx).join(' ');
+    } else {
+        // 找不到中文CSS名，把健康分前的都当客户名
+        customerName = parts.slice(1, healthIdx).join(' ');
+    }
+
+    if(customerName.length < 2 || customerName.length > 100) return null;
+    
+    return { customerName: customerName.trim(), healthScore, ppCss, atsCss, crmUrl };
 }
 
 main().catch(err => { console.error('❌ 失败:', err); process.exit(1); });
