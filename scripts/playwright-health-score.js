@@ -247,9 +247,9 @@ async function main() {
                 const cleanName = companyName.replace(/^\d+\s*\n?\s*/, '').trim();
 
                 const record = { companyName: cleanName, healthScore: score, ppCss, atsCss, owner, status };
-                const key = cleanName + '|' + score;
-                if (!seenKeys.has(key)) {
-                    seenKeys.add(key);
+                // 按公司名去重（同一公司只保留一条，取第一次出现的）
+                if (!seenKeys.has(cleanName)) {
+                    seenKeys.add(cleanName);
                     results.push(record);
                 }
             }

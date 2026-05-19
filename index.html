@@ -2618,8 +2618,18 @@
                     const data = await jsonbinGet(JSONBIN_CONFIG.bins.healthScores);
                     if (data && data.snapshots && data.snapshots.length > 0) {
                         const latest = data.snapshots[data.snapshots.length - 1];
-                        healthScoresData.value = latest.data || [];
-                        console.log('健康分数据加载成功，共', healthScoresData.value.length, '条');
+                        const rawData = latest.data || [];
+                        // 按客户名去重（同一客户保留分数最高的）
+                        const dedupMap = new Map();
+                        rawData.forEach(item => {
+                            const name = item.customerName || item.companyName || '';
+                            const score = parseFloat(item.healthScore) || 0;
+                            if (!dedupMap.has(name) || score > parseFloat(dedupMap.get(name).healthScore || 0)) {
+                                dedupMap.set(name, item);
+                            }
+                        });
+                        healthScoresData.value = Array.from(dedupMap.values());
+                        console.log('健康分数据加载成功，原始', rawData.length, '条，去重后', healthScoresData.value.length, '条');
                     } else {
                         healthScoresData.value = [];
                     }
@@ -2649,16 +2659,30 @@
                 const weeks = parseInt(healthTrendRange.value);
                 const snapshots = data.snapshots.slice(-weeks);
                 const weeksList = snapshots.map(s => s.week || (s.timestamp ? s.timestamp.slice(0,10) : ''));
+                // 去重辅助函数
+                const dedupeSnapshot = (snapData) => {
+                    const map = new Map();
+                    (snapData || []).forEach(item => {
+                        const name = item.customerName || item.companyName || '';
+                        const score = parseFloat(item.healthScore) || 0;
+                        if (!map.has(name) || score > parseFloat(map.get(name).healthScore || 0)) {
+                            map.set(name, item);
+                        }
+                    });
+                    return Array.from(map.values());
+                };
                 const avgSeries = weeksList.map((w, idx) => {
                     const snap = snapshots[idx];
                     if (!snap || !snap.data || snap.data.length === 0) return null;
-                    const sum = snap.data.reduce((a, c) => a + (parseFloat(c.healthScore) || 0), 0);
-                    return (sum / snap.data.length).toFixed(2);
+                    const deduped = dedupeSnapshot(snap.data);
+                    const sum = deduped.reduce((a, c) => a + (parseFloat(c.healthScore) || 0), 0);
+                    return (sum / deduped.length).toFixed(2);
                 });
                 const lowSeries = weeksList.map((w, idx) => {
                     const snap = snapshots[idx];
                     if (!snap || !snap.data) return null;
-                    return snap.data.filter(c => (parseFloat(c.healthScore) || 0) < healthThreshold.value).length;
+                    const deduped = dedupeSnapshot(snap.data);
+                    return deduped.filter(c => (parseFloat(c.healthScore) || 0) < healthThreshold.value).length;
                 });
                 if (window._healthChart) window._healthChart.dispose();
                 const chart = echarts.init(chartDom, 'dark');
