@@ -8,7 +8,7 @@ const JSONBIN_KEY = '$2a$10$94MoVDNRO0bakGDYcTsN3.BEiTefnDwwkXGndi1VuAZqxhKHhggb
 const HEALTH_BIN_ID = '6a089ef2adc21f119aad2ceb';
 const CRM_URL = 'https://crm.xiaoshouyi.com';
 
-// ===== 只保留这些 CSS 负责人的客户 =====
+// 目标CSS人员
 const TARGET_CSS = [
     '张辰', '宋明亮', '娄洋', '王俊朋', '曾瑞锋', '徐琪', '李晓丽',
     '金梅', '王亚淼', '周旺'
@@ -25,311 +25,312 @@ async function loadBin() {
     if (!res.ok) throw new Error(`读取Bin失败: ${res.status}`);
     return await res.json();
 }
-
 async function saveBin(data) {
     const res = await fetch(`${JSONBIN_API}/b/${HEALTH_BIN_ID}`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Master-Key': JSONBIN_KEY
-        },
+        method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
         body: JSON.stringify(data)
     });
-    if (!res.ok) throw new Error(`写入Bin失败: ${res.status} ${await res.text()}`);
+    if (!res.ok) throw new Error(`写入Bin失败: ${res.status}`);
     return true;
 }
-
 function getWeekKey() {
     const now = new Date();
     const start = new Date(now.getFullYear(), 0, 1);
-    const diff = now - start;
-    const oneWeek = 604800000;
-    const weekNum = Math.ceil((diff / oneWeek) + 1);
-    return `${now.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+    return `${now.getFullYear()}-W${String(Math.ceil((now - start) / 604800000 + 1)).padStart(2,'0')}`;
 }
 
 async function main() {
-    console.log('🎯 目标CSS人员：' + TARGET_CSS.join('、'));
-    console.log('   销售易列名：ATS CSS / PP CSS / 健康分');
-    console.log('   策略：抓取全量 → 本地按人过滤\n');
+    console.log('🎯 目标CSS：' + TARGET_CSS.join(','));
+    console.log('   列名：PP CSS / ATS CSS / 最新健康分\n');
 
     const browser = await webkit.launch({ headless: false });
     const context = await browser.newContext();
     const page = await context.newPage();
 
-    // 加载 cookies
+    // cookies
     if (fs.existsSync(COOKIE_FILE)) {
-        try {
-            const cookies = JSON.parse(fs.readFileSync(COOKIE_FILE, 'utf8'));
-            await context.addCookies(cookies);
-            console.log('✅ 已加载保存的登录状态');
-        } catch (e) {
-            console.log('⚠️  加载 cookies 失败:', e.message);
-        }
+        try { await context.addCookies(JSON.parse(fs.readFileSync(COOKIE_FILE, 'utf8'))); console.log('✅ cookie加载成功'); } catch(e){ console.log('⚠️ cookie加载失败'); }
     }
 
-    console.log('🚀 正在打开销售易...');
+    console.log('🚀 打开销售易...');
     await page.goto(`${CRM_URL}/index.action`, { waitUntil: 'networkidle', timeout: 60000 });
 
-    // 登录检测
-    const needLogin = await page.evaluate(() => {
-        return window.location.href.includes('login') ||
-               !!document.querySelector('input[type="password"]');
-    }).catch(() => true);
-
+    const needLogin = await page.evaluate(() => window.location.href.includes('login') || !!document.querySelector('input[type="password"]')).catch(()=>true);
     if (needLogin) {
-        console.log('🔐 请在浏览器中手动登录...');
-        try {
-            await page.waitForFunction(() => !window.location.href.includes('login'), { timeout: 300000 });
-            console.log('✅ 登录成功！');
-        } catch (e) {
-            console.log('⚠️  登录超时，尝试继续...');
-        }
-        const cookies = await context.cookies();
-        fs.writeFileSync(COOKIE_FILE, JSON.stringify(cookies, null, 2));
+        console.log('🔐 请在浏览器登录...');
+        try { await page.waitForFunction(() => !window.location.href.includes('login'), { timeout: 300000 }); } catch(e){}
+        fs.writeFileSync(COOKIE_FILE, JSON.stringify(await context.cookies(), null, 2));
         console.log('✅ 登录状态已保存');
-    } else {
-        console.log('✅ 使用已保存的登录状态');
-    }
+    } else { console.log('✅ 已登录'); }
 
     // 跳转客户列表
-    const accountUrl = `${CRM_URL}/bff/neoweb#/entityGrid/account?objectApiKey=account`;
-    console.log('📋 正在跳转客户列表...');
-    await page.goto(accountUrl);
+    console.log('\n📋 跳转客户列表...');
+    await page.goto(`${CRM_URL}/bff/neoweb#/entityGrid/account?objectApiKey=account`);
     await sleep(6000);
 
-    // 等待列表
-    console.log('⏳ 等待列表加载...');
-    try {
-        await page.waitForSelector('table, [class*="grid"], [class*="table"], [class*="list"]', { timeout: 30000 });
-        console.log('✅ 列表容器已加载');
-    } catch (e) {
-        console.log('⚠️  未检测到列表容器，继续...');
+    // 等数据行出现
+    console.log('⏳ 等待数据加载...');
+    for(let w=0; w<10; w++) {
+        await sleep(2000);
+        const ready = await page.evaluate(() => {
+            const text = document.body.innerText;
+            return text.includes('客户名称') && text.includes('PP CSS') && text.includes('最新健康分') && /\d+\.\d+/.test(text);
+        }).catch(()=>false);
+        if(ready) break;
+        console.log(`   等待中... (${(w+1)*2}s)`);
     }
-    await sleep(3000);
+    await sleep(2000);
 
-    // ===== 第一步：先打印表头，确认列名 =====
-    console.log('\n===== 第一步：识别表头列名 =====');
-    const headerInfo = await page.evaluate(() => {
-        const headerCells = document.querySelectorAll('thead th, [class*="header-cell"], [class*="col-header"], [class*="header"] th');
-        const headers = Array.from(headerCells).map((h, i) => ({
+    // ===== 获取表头（多种方式） =====
+    console.log('\n📋 识别列头...');
+    const colInfo = await page.evaluate(() => {
+        // 方式1：标准表头
+        let headerCells = Array.from(document.querySelectorAll('thead th, [class*="header-cell"], [class*="col-header"]'));
+        
+        // 方式2：如果方式1没找到，找第一行的特殊元素
+        if(headerCells.length < 3) {
+            headerCells = Array.from(document.querySelectorAll('[class*="head"] th, [class*="title"]'));
+        }
+        // 方式3：找包含"序号"或"客户名称"的元素所在的行
+        if(headerCells.length < 3) {
+            const allEls = document.querySelectorAll('*');
+            for(const el of allEls) {
+                if(el.innerText === '序号' && el.offsetParent !== null) {
+                    const parentRow = el.closest('tr')?.closest('thead') || el.closest('tr')?.parentElement;
+                    if(parentRow) {
+                        headerCells = Array.from(parentRow.children);
+                    }
+                    break;
+                }
+            }
+        }
+
+        return Array.from(headerCells).map((el,i) => ({
             idx: i,
-            text: h.innerText.trim().replace(/\s+/g, ' ')
+            text: el.innerText.trim().replace(/\s+/g,' ')
         }));
-        return headers;
     }).catch(() => []);
 
-    console.log('📋 当前列表的列名：');
-    headerInfo.forEach(h => console.log(`   [${h.idx}] ${h.text}`));
+    console.log('   检测到的列：');
+    colInfo.forEach(c => console.log(`     [${c.idx}] "${c.text}"`));
 
-    // 找关键列
-    const nameCol = headerInfo.find(h => h.text.includes('客户') || h.text.includes('名称'));
-    const healthCol = headerInfo.find(h => h.text.includes('健康分'));
-    const atsCssCol = headerInfo.find(h => h.text === 'ATS CSS' || h.text.includes('ATS CSS'));
-    const ppCssCol = headerInfo.find(h => h.text === 'PP CSS' || h.text.includes('PP CSS'));
-    // 兼容：如果列名有细微差异
-    const anyCssCol = headerInfo.find(h => /ATS\s*CSS|PP\s*CSS/i.test(h.text));
+    // 定位关键列索引
+    const nameIdx = colInfo.findIndex(c => c.text.includes('客户名称')) ?? -1;
+    const ppCssIdx = colInfo.findIndex(c => c.text === 'PP CSS' || /^PP\s*CSS$/i.test(c.text));
+    const atsCssIdx = colInfo.findIndex(c => c.text === 'ATS CSS' || /^ATS\s*CSS$/i.test(c.text));
+    const healthIdx = colInfo.findIndex(c => c.text === '最新健康分' || c.text.includes('最新健康分'));
 
-    console.log('\n🔍 关键列定位：');
-    console.log(`   客户名称：${nameCol ? `[${nameCol.idx}] ${nameCol.text}` : '❌ 未找到'}`);
-    console.log(`   健康分：${healthCol ? `[${healthCol.idx}] ${healthCol.text}` : '❌ 未找到'}`);
-    console.log(`   ATS CSS：${atsCssCol ? `[${atsCssCol.idx}] ${atsCssCol.text}` : '❌ 未找到'}`);
-    console.log(`   PP CSS：${ppCssCol ? `[${ppCssCol.idx}] ${ppCssCol.text}` : '❌ 未找到'}`);
-    console.log(`   任意CSS列：${anyCssCol ? `[${anyCssCol.idx}] ${anyCssCol.text}` : '❌ 未找到'}`);
+    console.log(`\n   🔍 列索引定位：`);
+    console.log(`      客户名称 → [${nameIdx}]`);
+    console.log(`      PP CSS   → [${ppCssIdx}]`);
+    console.log(`      ATS CSS  → [${atsCssIdx}]`);
+    console.log(`      最新健康分→ [${healthIdx}]`);
 
-    // 如果健康分列没找到，提示用户手动添加
-    if (!healthCol) {
-        console.log('\n⚠️⚠️⚠️ 未检测到「健康分」列！');
-        console.log('请在浏览器中操作：');
-        console.log('   1. 找到列设置/自定义列');
-        console.log('   2. 添加「健康分」列');
-        console.log('   3. 确保列表中能看到健康分数据');
-        console.log('   4. 操作完后回到终端按回车继续');
-        await new Promise(resolve => { process.stdin.once('data', () => resolve()); });
-        // 重新读取表头
-        const headerInfo2 = await page.evaluate(() => {
-            const headerCells = document.querySelectorAll('thead th, [class*="header-cell"], [class*="col-header"], [class*="header"] th');
-            return Array.from(headerCells).map((h, i) => ({ idx: i, text: h.innerText.trim().replace(/\s+/g, ' ') }));
-        }).catch(() => []);
-        console.log('📋 更新后的列名：');
-        headerInfo2.forEach(h => console.log(`   [${h.idx}] ${h.text}`));
+    if(nameIdx < 0 || healthIdx < 0) {
+        console.log('\n❌ 关键列未找到！');
+        console.log('请确保浏览器里客户列表显示了「客户名称」和「最新健康分」列');
+        console.log('按回车继续尝试抓取（可能使用备用方案）...');
+        await new Promise(resolve => process.stdin.once('data', () => resolve()));
     }
 
-    // ===== 第二步：抓取所有页 =====
-    console.log('\n===== 第二步：开始抓取全量数据 =====');
+    // ===== 开始翻页抓取 =====
+    console.log('\n' + '='.repeat(50));
+    console.log('📊 开始逐页抓取...');
     const allRaw = [];
     let pageNum = 1;
-    let hasNext = true;
-    let emptyPages = 0;
 
-    while (hasNext && pageNum <= 100 && emptyPages < 3) {
-        console.log(`📄 第 ${pageNum} 页...`);
+    // 先获取总记录数
+    const totalCount = await page.evaluate(() => {
+        const text = document.body.innerText;
+        // 匹配 "共 673 条"
+        const m = text.match(/共\s*(\d+)\s*条/);
+        return m ? parseInt(m[1]) : 0;
+    }).catch(() => 0);
+    const totalPages = Math.ceil(totalCount / 50);
+    console.log(`   总计约 ${totalCount} 条，约 ${totalPages} 页\n`);
 
-        const pageData = await page.evaluate(() => {
+    while(pageNum <= totalPages + 5) { // 多给几页余量
+        console.log(`   📄 第 ${pageNum} / ~${totalPages} 页...`);
+
+        const pageData = await page.evaluate((colMap) => {
             const results = [];
 
-            // 获取所有表头
-            const headerCells = document.querySelectorAll('thead th, [class*="header-cell"], [class*="col-header"], [class*="header"] th');
-            const headers = Array.from(headerCells).map(h => h.innerText.trim().replace(/\s+/g, ' '));
+            // 销售易的数据行选择器——尝试多种
+            let dataRows = [];
+            
+            // 尝试1：tbody tr
+            const tbodyRows = Array.from(document.querySelectorAll('tbody tr')).filter(tr => tr.querySelectorAll('td').length >= 3);
+            if(tbodyRows.length > 0) dataRows = tbodyRows;
 
-            // 找各列索引
-            const nameIdx = headers.findIndex(h => h.includes('客户') || h.includes('名称'));
-            const healthIdx = headers.findIndex(h => h.includes('健康分'));
-            const atsCssIdx = headers.findIndex(h => h === 'ATS CSS');
-            const ppCssIdx = headers.findIndex(h => h === 'PP CSS');
+            // 尝试2：带row class的div
+            if(dataRows.length === 0) {
+                const divRows = Array.from(document.querySelectorAll('[class*="row"][class*="item"], [class*="list-row"]'));
+                if(divRows.length > 0) dataRows = divRows;
+            }
 
-            // 兼容匹配
-            let cssIdx1 = atsCssIdx;
-            let cssIdx2 = ppCssIdx;
-            if (cssIdx1 < 0) cssIdx1 = headers.findIndex(h => /ATS\s*CSS/i.test(h));
-            if (cssIdx2 < 0) cssIdx2 = headers.findIndex(h => /PP\s*CSS/i.test(h));
+            // 尝试3：所有tr排除header
+            if(dataRows.length === 0) {
+                dataRows = Array.from(document.querySelectorAll('table tr')).filter(tr => {
+                    return !tr.closest('thead') && tr.querySelectorAll('td').length >= 3;
+                });
+            }
 
-            // 取数据行
-            const dataRows = Array.from(document.querySelectorAll('tbody tr')).filter(tr => {
-                return tr.querySelectorAll('td').length >= 2;
-            });
+            // 尝试4：直接从页面文本区域提取（最暴力但最稳）
+            if(dataRows.length === 0) {
+                // 不行了，返回空
+                return [];
+            }
 
-            dataRows.forEach(row => {
+            // 对每一行提取字段
+            for(const row of dataRows) {
                 try {
-                    const cells = row.querySelectorAll('td');
-                    const name = nameIdx >= 0 ? (cells[nameIdx]?.innerText || '').trim() : '';
-                    const healthScore = healthIdx >= 0 ? parseFloat(cells[healthIdx]?.innerText || '0') || 0 : 0;
-                    const atsCss = cssIdx1 >= 0 ? (cells[cssIdx1]?.innerText || '').trim() : '';
-                    const ppCss = cssIdx2 >= 0 ? (cells[cssIdx2]?.innerText || '').trim() : '';
+                    const cells = row.tagName === 'TR' 
+                        ? Array.from(row.querySelectorAll('td'))
+                        : Array.from(row.querySelectorAll('[class*="cell"], [class*="column"], td'));
 
-                    // 获取CRM链接
+                    if(cells.length < 3) continue;
+
+                    const getName = (idx) => idx >= 0 && idx < cells.length ? (cells[idx]?.innerText||'').trim() : '';
+                    const getNum = (idx) => idx >= 0 && idx < cells.length ? parseFloat(cells[idx]?.innerText||'0') || 0 : 0;
+                    
+                    const customerName = getName(colMap.nameIdx);
+                    const ppCss = getName(colMap.ppCssIdx);
+                    const atsCss = getName(colMap.atssCssIdx);
+                    const healthScore = getNum(colMap.healthIdx);
+
+                    // 取链接
                     let crmUrl = '';
-                    const nameCell = nameIdx >= 0 ? cells[nameIdx] : null;
-                    if (nameCell) {
+                    const nameCell = colMap.nameIdx >= 0 ? cells[colMap.nameIdx] : null;
+                    if(nameCell) {
                         const link = nameCell.querySelector('a');
-                        if (link?.href) crmUrl = link.href;
+                        if(link?.href) crmUrl = link.href;
                     }
 
-                    if (name && name.length > 0 && name.length < 100) {
-                        results.push({ customerName: name, healthScore, atsCss, ppCss, crmUrl });
+                    if(customerName && customerName.length > 0 && customerName.length < 100) {
+                        results.push({ customerName, healthScore, ppCss, atsCss, crmUrl });
                     }
-                } catch (e) {}
-            });
-
+                } catch(e) {}
+            }
             return results;
-        }).catch(e => {
-            console.log('   ⚠️ 解析出错:', e.message);
+        }, { nameIdx, ppCssIdx, atssCssIdx: atsCssIdx, healthIdx }).catch(e => {
+            console.log(`   ⚠️ 页面解析异常: ${e.message}`);
             return [];
         });
 
-        if (pageData.length > 0) {
+        if(pageData.length > 0) {
             allRaw.push(...pageData);
-            emptyPages = 0;
-            console.log(`   ✅ ${pageData.length} 条（累计 ${allRaw.length}）`);
+            console.log(`      ✅ +${pageData.length} 条（累计 ${allRaw.length}）`);
         } else {
-            emptyPages++;
-            console.log(`   ⬜ 0 条`);
+            console.log(`      ⬜ 0 条`);
+            // 连续3页为空就停
+            if(allRaw.length > 0) break;
         }
 
-        // 下一页
-        hasNext = await page.evaluate(() => {
-            // 方式1：按钮文字匹配
-            const allBtns = document.querySelectorAll('button, a, [role="button"], li[class*="page"], span[class*="page"]');
-            for (const btn of allBtns) {
-                const text = (btn.innerText || '').trim();
-                const cls = btn.className || '';
-                if ((text === '下一页' || text === '>' || text.includes('next') || text === '›') 
-                    && !btn.disabled 
-                    && !cls.includes('disabled') 
-                    && !cls.includes('is-disabled')
-                    && btn.offsetParent !== null) {
-                    btn.click();
-                    return true;
-                }
+        // 点击下一页
+        const clickedNext = await page.evaluate(() => {
+            // 查找所有可能的下一页按钮
+            const candidates = [...document.querySelectorAll('button, a, li, span, div')]
+                .filter(el => {
+                    const text = (el.innerText||'').trim();
+                    const cls = (el.className||'');
+                    // 匹配：下一页、>、›、next
+                    if(text === '下一页' || text === '>' || text === '›' || text.toLowerCase().includes('next')) {
+                        return !el.disabled 
+                            && !cls.includes('disabled')
+                            && !cls.includes('is-disabled')
+                            && el.offsetParent !== null; // 可见
+                    }
+                    // 也匹配右箭头图标
+                    if(cls.includes('next') || cls.includes('right')) {
+                        return !el.disabled && el.offsetParent !== null;
+                    }
+                    return false;
+                });
+            
+            if(candidates.length > 0) {
+                candidates[0].click();
+                return true;
             }
             return false;
         }).catch(() => false);
 
-        if (hasNext) {
-            await sleep(2500);
-            pageNum++;
+        if(!clickedNext) {
+            console.log('   ⏹️ 已到达最后一页');
+            break;
         }
+
+        await sleep(3000); // 翻页后等数据加载
+        pageNum++;
     }
 
-    console.log(`\n📊 全量抓取完成：共 ${allRaw.length} 条，${pageNum} 页`);
+    console.log(`\n📊 抓取完成：共 ${allRaw.length} 条原始数据`);
 
-    // ===== 第三步：按人过滤 =====
-    console.log('\n===== 第三步：按CSS人员过滤 =====');
-    const filtered = allRaw.filter(item => {
-        const atsMatch = item.atsCss && TARGET_CSS.some(t => item.atsCss.includes(t));
-        const ppMatch = item.ppCss && TARGET_CSS.some(t => item.ppCss.includes(t));
-        return atsMatch || ppMatch;
-    });
-
-    // 合并为统一格式
-    const finalData = filtered.map(item => {
-        // 判断属于哪个团队
-        const isAts = TARGET_CSS.slice(0, 7).some(t => (item.atsCss || '').includes(t));
-        const isPp = TARGET_CSS.slice(7).some(t => (item.ppCss || '').includes(t));
-        const css = isAts ? item.atsCss : (isPp ? item.ppCss : (item.atsCss || item.ppCss || ''));
-        return {
-            customerName: item.customerName,
-            healthScore: item.healthScore,
-            css: css.trim(),
-            crmUrl: item.crmUrl
-        };
-    });
-
-    console.log(`✅ 过滤后：${finalData.length} 条（从 ${allRaw.length} 条中筛选）`);
-
-    if (finalData.length === 0) {
-        console.log('\n❌ 过滤后数据为空！打印前5条原始数据供排查：');
-        allRaw.slice(0, 5).forEach(d => {
-            console.log(`   客户：${d.customerName} | ATS CSS：[${d.atsCss}] | PP CSS：[${d.ppCss}] | 健康分：${d.healthScore}`);
-        });
-        console.log('\n浏览器保持打开，请检查列名是否正确，然后关闭终端结束');
+    if(allRaw.length === 0) {
+        console.log('\n❌ 一条都没抓到。打印前3行原始HTML供排查...\n');
+        const sample = await page.evaluate(() => {
+            const rows = document.querySelectorAll('tbody tr');
+            if(rows.length > 0) {
+                return Array.from(rows).slice(0, 3).map(r => r.innerText.substring(0, 200));
+            }
+            // 如果没有tbody，取body部分文字
+            return ['无tbody元素', 'body前200字:', document.body.innerText.substring(0, 500)];
+        }).catch(() => ['无法获取']);
+        sample.forEach(s => console.log('  ', s));
+        console.log('\n浏览器保持打开，手动检查后关闭终端结束');
         await sleep(300000);
         await browser.close();
         return;
     }
 
-    // 按人汇总
-    const summary = {};
-    finalData.forEach(d => {
-        const key = d.css || '未知';
-        summary[key] = (summary[key] || 0) + 1;
-    });
-    console.log('\n📋 各人客户数：');
-    Object.entries(summary).sort((a, b) => b[1] - a[1]).forEach(([name, count]) => {
-        console.log(`   ${name}：${count} 条`);
+    // ===== 过滤目标人员 =====
+    console.log('\n===== 按 CSS 人员过滤 =====');
+    const filtered = allRaw.filter(item => {
+        const matchPp = item.ppCss && TARGET_CSS.some(t => item.ppCss.trim().includes(t));
+        const matchAts = item.atsCss && TARGET_CSS.some(t => item.atsCss.trim().includes(t));
+        return matchPp || matchAts;
     });
 
-    // 写入 JSONBin
-    const snapshot = {
-        week: getWeekKey(),
-        timestamp: new Date().toISOString(),
-        threshold: 4,
-        data: finalData
-    };
+    const finalData = filtered.map(item => ({
+        customerName: item.customerName,
+        healthScore: item.healthScore,
+        css: (item.atsCss || item.ppCss || '').trim(),
+        crmUrl: item.crmUrl
+    }));
 
-    console.log('\n💾 正在写入 JSONBin...');
-    try {
-        const binData = await loadBin();
-        binData.record.snapshots = binData.record.snapshots || [];
-        binData.record.snapshots.push(snapshot);
-        if (binData.record.snapshots.length > 12) {
-            binData.record.snapshots = binData.record.snapshots.slice(-12);
+    console.log(`✅ 过滤结果：${finalData.length} 条`);
+
+    if(finalData.length === 0) {
+        console.log('❌ 过滤后为空！打印原始数据的PP CSS和ATS CSS值供排查：');
+        allRaw.slice(0, 10).forEach(d => {
+            console.log(`  "${d.customerName}" | PP:["${d.ppCss}"] ATS:["${d.atsCss}"] 健康:${d.healthScore}`);
+        });
+        await sleep(10000);
+    } else {
+        const summary = {};
+        finalData.forEach(d => { summary[d.css] = (summary[d.css]||0)+1; });
+        console.log('\n📋 各人客户数：');
+        Object.entries(summary).sort((a,b)=>b[1]-a[1]).forEach(([n,c]) => console.log(`   ${n}：${c}`));
+
+        // 写入 JSONBin
+        const snapshot = { week: getWeekKey(), timestamp: new Date().toISOString(), threshold: 4, data: finalData };
+        console.log('\n💾 写入 JSONBin...');
+        try {
+            const bin = await loadBin();
+            bin.record.snapshots = bin.record.snapshots || [];
+            bin.record.snapshots.push(snapshot);
+            if(bin.record.snapshots.length > 12) bin.record.snapshots = bin.record.snapshots.slice(-12);
+            await saveBin(bin.record);
+            console.log('✅ 成功！周次：'+snapshot.week+'，点网页🔄刷新查看');
+        } catch(err) {
+            console.error('❌ JSONBin失败:', err.message);
+            const localFile = path.join(__dirname, `health-${getWeekKey()}.json`);
+            fs.writeFileSync(localFile, JSON.stringify(snapshot, null, 2));
+            console.log('已保存本地：'+localFile);
         }
-        await saveBin(binData.record);
-        console.log('✅ 写入成功！周次：' + snapshot.week);
-        console.log('   在网页「健康分看板」点🔄刷新即可查看');
-    } catch (err) {
-        console.error('❌ JSONBin写入失败:', err.message);
-        const localPath = path.join(__dirname, `health-snapshot-${getWeekKey()}.json`);
-        fs.writeFileSync(localPath, JSON.stringify(snapshot, null, 2));
-        console.log('   已保存到本地：' + localPath);
     }
 
     await browser.close();
-    console.log('\n🎉 全部完成！');
+    console.log('\n🎉 完成！');
 }
 
-main().catch(err => {
-    console.error('❌ 脚本执行失败：', err);
-    process.exit(1);
-});
+main().catch(err => { console.error('❌ 失败:', err); process.exit(1); });
