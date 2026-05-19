@@ -1930,28 +1930,70 @@
                             </div>
                             
                             <div v-if="weekSummaryData.length > 0">
-                                <div class="stats-grid" style="margin-bottom:20px">
+                                <!-- 总量卡片 -->
+                                <div class="stats-grid" style="margin-bottom:24px">
                                     <div class="stat-card"><div class="icon-wrap" style="background:#ecf5ff">💬</div><div class="label">总咨询量</div><div class="value">{{weekSummaryData.reduce((a,b)=>a+(b.咨询量||0),0)}}</div></div>
                                     <div class="stat-card"><div class="icon-wrap" style="background:#f0f9eb">⚙️</div><div class="label">总配置时长</div><div class="value">{{weekSummaryData.reduce((a,b)=>a+(b.配置时长||0),0)}}h</div></div>
                                     <div class="stat-card"><div class="icon-wrap" style="background:#fef0f9">📞</div><div class="label">总会议时长</div><div class="value">{{weekSummaryData.reduce((a,b)=>a+(b.会议时长||0),0)}}h</div></div>
-                                    <div class="stat-card"><div class="icon-wrap" style="background:#fdf6ec">👥</div><div class="label">已填写人数</div><div class="value">{{weekSummaryData.length}}</div></div>
+                                    <div class="stat-card"><div class="icon-wrap" style="background:#fdf6ec">👥</div><div class="label">已填写人数</div><div class="value">{{weekSummaryData.length}}<span style="font-size:13px;color:var(--text-muted);font-weight:400">/10</span></div></div>
                                 </div>
-                                <div class="table-wrap">
-                                    <table>
-                                        <thead><tr><th>成员</th><th>咨询量</th><th>配置时长</th><th>会议时长</th><th>EVA进展</th><th>健康分</th><th>操作</th></tr></thead>
+
+                                <!-- 按小组分组统计 -->
+                                <div v-for="group in weekGroupStats" :key="group.name" style="margin-bottom:20px;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb">
+                                    <!-- 小组标题栏 -->
+                                    <div :style="{background: group.bg, padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}">
+                                        <div style="display:flex;align-items:center;gap:10px">
+                                            <div :style="{width:'8px',height:'8px',borderRadius:'50%',background: group.color}"></div>
+                                            <span style="font-weight:700;font-size:15px;color:var(--text-primary)">{{group.name}}</span>
+                                            <span style="font-size:12px;color:var(--text-muted)">已填 {{group.memberCount}}/{{group.totalMembers}} 人</span>
+                                        </div>
+                                        <div style="display:flex;gap:20px;font-size:13px">
+                                            <span style="color:var(--text-secondary)">咨询 <strong :style="{color: group.color}">{{group.咨询量}}</strong></span>
+                                            <span style="color:var(--text-secondary)">配置 <strong :style="{color: group.color}">{{group.配置时长}}h</strong></span>
+                                            <span style="color:var(--text-secondary)">会议 <strong :style="{color: group.color}">{{group.会议时长}}h</strong></span>
+                                        </div>
+                                    </div>
+                                    <!-- 小组成员明细表 -->
+                                    <table style="width:100%;border-collapse:collapse;font-size:13px">
+                                        <thead>
+                                            <tr style="background:#f9fafb">
+                                                <th style="padding:10px 16px;text-align:left;font-weight:600;color:var(--text-secondary)">成员</th>
+                                                <th style="padding:10px 12px;text-align:center;font-weight:600;color:var(--text-secondary)">咨询量</th>
+                                                <th style="padding:10px 12px;text-align:center;font-weight:600;color:var(--text-secondary)">配置时长</th>
+                                                <th style="padding:10px 12px;text-align:center;font-weight:600;color:var(--text-secondary)">会议时长</th>
+                                                <th style="padding:10px 12px;text-align:center;font-weight:600;color:var(--text-secondary)">EVA</th>
+                                                <th style="padding:10px 12px;text-align:center;font-weight:600;color:var(--text-secondary)">健康分</th>
+                                                <th style="padding:10px 12px;text-align:center;font-weight:600;color:var(--text-secondary)">操作</th>
+                                            </tr>
+                                        </thead>
                                         <tbody>
-                                            <tr v-for="item in weekSummaryData" :key="item.week">
-                                                <td><strong>{{item.填写人}}</strong></td>
-                                                <td>{{item.咨询量 || 0}}</td>
-                                                <td>{{item.配置时长 || 0}}h</td>
-                                                <td>{{item.会议时长 || 0}}h</td>
-                                                <td>{{(item.eva列表||[]).length}}条</td>
-                                                <td>{{(item.健康分列表||[]).length}}条</td>
-                                                <td><button class="btn" style="background:none;color:#409eff;padding:4px 8px" @click="viewWeeklyReport(item)">查看</button></td>
+                                            <tr v-for="m in group.members" :key="m.name" style="border-bottom:1px solid #f3f4f6">
+                                                <td style="padding:10px 16px;font-weight:600;color:var(--text-primary)">{{m.name}}</td>
+                                                <td style="padding:10px 12px;text-align:center">
+                                                    <span :style="{padding:'2px 10px',borderRadius:'6px',fontWeight:'600',fontSize:'13px',background: m.咨询量 > 0 ? group.bg : '#f9fafb', color: m.咨询量 > 0 ? group.color : '#d1d5db'}">{{m.咨询量}}</span>
+                                                </td>
+                                                <td style="padding:10px 12px;text-align:center">
+                                                    <span :style="{padding:'2px 10px',borderRadius:'6px',fontWeight:'600',fontSize:'13px',background: m.配置时长 > 0 ? group.bg : '#f9fafb', color: m.配置时长 > 0 ? group.color : '#d1d5db'}">{{m.配置时长}}h</span>
+                                                </td>
+                                                <td style="padding:10px 12px;text-align:center">
+                                                    <span :style="{padding:'2px 10px',borderRadius:'6px',fontWeight:'600',fontSize:'13px',background: m.会议时长 > 0 ? group.bg : '#f9fafb', color: m.会议时长 > 0 ? group.color : '#d1d5db'}">{{m.会议时长}}h</span>
+                                                </td>
+                                                <td style="padding:10px 12px;text-align:center;color:var(--text-secondary)">{{m.evaCount}}条</td>
+                                                <td style="padding:10px 12px;text-align:center;color:var(--text-secondary)">{{m.healthCount}}条</td>
+                                                <td style="padding:10px 12px;text-align:center">
+                                                    <button class="btn" style="background:none;color:#409eff;padding:4px 8px;font-size:12px"
+                                                            @click="viewWeeklyReport(weekSummaryData.find(r => r.填写人 === m.name))">查看</button>
+                                                </td>
+                                            </tr>
+                                            <!-- 未填写人员 -->
+                                            <tr v-for="missing in group.members.length === 0 ? group.totalMembers : 0" :key="'m-'+missing" style="background:#fafafa">
+                                                <td style="padding:8px 16px;color:#d1d5db;font-size:12px">未填写</td>
+                                                <td colspan="6" style="padding:8px 12px;color:#d1d5db;font-size:12px">-</td>
                                             </tr>
                                         </tbody>
                                     </table>
                                 </div>
+
                                 <div style="margin-top:20px">
                                     <button class="btn btn-primary" @click="generateTeamReport">📄 生成团队周报</button>
                                 </div>
@@ -2021,6 +2063,39 @@
                                     <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:4px">{{t.type}}</div>
                                     <div style="font-size:22px;font-weight:800;color:var(--primary-light)">{{t.count}}<span style="font-size:12px;font-weight:400;color:var(--text-muted);margin-left:2px">条</span></div>
                                 </div>
+                            </div>
+                        </div>
+                        <!-- CSM维度分析：人员×阶段交叉统计 -->
+                        <div style="background:var(--bg-card);border-radius:16px;padding:28px 32px;margin-top:20px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
+                            <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:4px">👥 CSM维度分析</div>
+                            <div style="font-size:12px;color:var(--text-muted);margin-bottom:20px">按负责人×进展阶段交叉统计商机分布，点击行可穿透查看该人员商机</div>
+                            <div style="overflow-x:auto">
+                                <table style="width:100%;border-collapse:collapse;font-size:13px">
+                                    <thead>
+                                        <tr>
+                                            <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--text-secondary);border-bottom:2px solid #e5e7eb;white-space:nowrap;background:#f8fafc;position:sticky;left:0;z-index:1">负责人</th>
+                                            <th v-for="stage in bizCsmStageMatrix.stages" :key="stage" style="padding:10px 8px;text-align:center;font-weight:600;color:var(--text-secondary);border-bottom:2px solid #e5e7eb;white-space:nowrap;font-size:12px">{{stage}}</th>
+                                            <th style="padding:10px 12px;text-align:center;font-weight:700;color:#6366f1;border-bottom:2px solid #6366f1;white-space:nowrap;background:#f8fafc;position:sticky;right:0;z-index:1">合计</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="person in bizCsmStageMatrix.persons" :key="person" style="cursor:pointer" @click="drillToBizPerson(person)"
+                                            @mouseenter="$event.currentTarget.style.background='#f0f5ff'" @mouseleave="$event.currentTarget.style.background=''">
+                                            <td style="padding:10px 12px;font-weight:600;color:var(--text-primary);border-bottom:1px solid #f0f0f0;white-space:nowrap;background:#f8fafc;position:sticky;left:0;z-index:1">{{person}}</td>
+                                            <td v-for="stage in bizCsmStageMatrix.stages" :key="stage" style="padding:10px 8px;text-align:center;border-bottom:1px solid #f0f0f0;white-space:nowrap">
+                                                <span v-if="(bizCsmStageMatrix.matrix[person]||{})[stage]"
+                                                      style="display:inline-block;min-width:24px;padding:2px 6px;border-radius:6px;font-weight:600;font-size:12px"
+                                                      :style="{background: (bizCsmStageMatrix.matrix[person]||{})[stage] >= 3 ? '#ede9fe' : '#f3f4f6', color: (bizCsmStageMatrix.matrix[person]||{})[stage] >= 3 ? '#7c3aed' : '#6b7280'}">
+                                                    {{(bizCsmStageMatrix.matrix[person]||{})[stage] || '-'}}
+                                                </span>
+                                                <span v-else style="color:#d1d5db">-</span>
+                                            </td>
+                                            <td style="padding:10px 12px;text-align:center;font-weight:700;color:#6366f1;border-bottom:1px solid #f0f0f0;white-space:nowrap;background:#f8fafc;position:sticky;right:0;z-index:1">
+                                                {{Object.values(bizCsmStageMatrix.matrix[person]||{}).reduce((a,b)=>a+b,0)}}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                 </template>
@@ -6425,6 +6500,38 @@
             const reportContent = ref('');
             const historyFilter = ref('all');
             const weekSummaryData = ref([]);
+
+            // 小组配置
+            const TEAM_GROUPS = [
+                { name: '华东一组', members: ['张辰','曾瑞锋','王俊朋','娄洋','宋明亮','徐琪','李晓丽'], color: '#3b82f6', bg: '#eff6ff' },
+                { name: '华东二组', members: ['周旺','金梅'], color: '#8b5cf6', bg: '#f5f3ff' },
+                { name: '华东三组', members: ['王亚淼'], color: '#f59e0b', bg: '#fffbeb' },
+            ];
+
+            // 按小组分组的汇总统计
+            const weekGroupStats = computed(() => {
+                return TEAM_GROUPS.map(group => {
+                    const members = weekSummaryData.value.filter(r => group.members.includes(r.填写人));
+                    return {
+                        name: group.name,
+                        color: group.color,
+                        bg: group.bg,
+                        memberCount: members.length,
+                        totalMembers: group.members.length,
+                        咨询量: members.reduce((a,b) => a + (parseInt(b.咨询量) || 0), 0),
+                        配置时长: members.reduce((a,b) => a + (parseFloat(b.配置时长) || 0), 0),
+                        会议时长: members.reduce((a,b) => a + (parseFloat(b.会议时长) || 0), 0),
+                        members: members.map(m => ({
+                            name: m.填写人,
+                            咨询量: parseInt(m.咨询量) || 0,
+                            配置时长: parseFloat(m.配置时长) || 0,
+                            会议时长: parseFloat(m.会议时长) || 0,
+                            evaCount: (m.eva列表 || []).length,
+                            healthCount: (m.健康分列表 || []).length,
+                        }))
+                    };
+                });
+            });
             
             const loadWeekSummary = () => {
                 weekSummaryData.value = weeklyReports.value.filter(r => r.week === summaryWeek.value);
@@ -7034,6 +7141,33 @@
                     map[t] = (map[t] || 0) + 1;
                 });
                 return Object.entries(map).map(([type, count]) => ({type, count})).sort((a,b) => b.count - a.count);
+            });
+
+            // CSM维度分析：人员×阶段交叉统计
+            const bizCsmStageMatrix = computed(() => {
+                const personSet = new Set();
+                const matrix = {};
+                bizData.value.forEach(item => {
+                    const person = item['负责CSS'] || '未知';
+                    const progress = (item['当前进展'] || '').toLowerCase();
+                    let stageKey = '其他';
+                    const stageLabels = ['合同中','已开通/完成','试用支持中','CSM跟进中','评估中','等待决策','无预算/暂缓'];
+                    const stageKeys = ['合同','已开通','试用','跟进','评估','决策','无预算'];
+                    for (let i = 0; i < stageKeys.length; i++) {
+                        const kw = stageKeys[i];
+                        if (new RegExp(kw).test(progress)) { stageKey = stageLabels[i]; break; }
+                    }
+                    personSet.add(person);
+                    if (!matrix[person]) matrix[person] = {};
+                    matrix[person][stageKey] = (matrix[person][stageKey] || 0) + 1;
+                });
+                const persons = [...personSet].sort((a,b) => {
+                    const ca = Object.values(matrix[a] || {}).reduce((s,v) => s+v, 0);
+                    const cb = Object.values(matrix[b] || {}).reduce((s,v) => s+v, 0);
+                    return cb - ca;
+                });
+                const allStages = ['合同中','已开通/完成','试用支持中','CSM跟进中','评估中','等待决策','无预算/暂缓','其他'];
+                return { persons, stages: allStages, matrix };
             });
             
             // 进展阶段统计（归类）
@@ -7646,7 +7780,7 @@
                 // 数据
                 allData, records, configs, meetings, weeklyReports,
                 // 周报汇总
-                weekSummaryData, summaryWeek, loadWeekSummary,
+                weekSummaryData, summaryWeek, loadWeekSummary, weekGroupStats, TEAM_GROUPS,
                 // 周报
                 weeklyForm, weeklySummary, currentWeek, summaryWeek, showReportModal, reportContent, historyFilter, filteredHistory, weeklyUnfilled,
                 importWeeklyData, getCurrentWeek, getWeekDateRange, loadWeeklyReport, saveWeeklyReport, addEvaItem, removeEvaItem, addHealthItem, removeHealthItem, previewWeeklyReport, viewWeeklyReport, generateWeeklyReport, copyReport, exportAllWeekly, generateTeamReport, formatDate, setCurrentWeek, setSummaryWeek,
@@ -7685,7 +7819,7 @@
                 // 商机统计
                 bizPersonStats, bizPersonStatsMax, barStyle, bizTypeStats, bizStageStats, bizStageSorted, bizStageSortedMax,
                 bizFilterPerson, drillToBizPerson, clearBizPersonFilter, drillToBizType,
-                bizFilterStageKeyword, drillToStage, clearBizStageFilter, drillToSingleItem, bizHighlightKey,
+                bizFilterStageKeyword, drillToStage, clearBizStageFilter, drillToSingleItem, bizHighlightKey, bizCsmStageMatrix,
                 // 筛选清除方法
                 clearDateFilter, clearConfigDateFilter, clearMeetingDateFilter,
                 // 健康分
