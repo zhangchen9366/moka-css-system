@@ -2048,14 +2048,14 @@
                                     <div style="padding:10px 8px;text-align:center;font-weight:700;font-size:11px;color:#8b5cf6;background:linear-gradient(135deg,rgba(99,102,241,0.08),rgba(139,92,246,0.08));border-radius:8px">合计</div>
                                     <!-- 数据行 -->
                                     <template v-for="(person, pi) in bizCsmStageMatrix.persons" :key="person">
-                                        <div style="padding:10px 8px;font-weight:700;color:var(--text-primary);white-space:nowrap;display:flex;align-items:center;cursor:pointer;border-radius:8px;transition:background 0.2s"
+                                        <div :style="{padding:'10px 8px',fontWeight:'700',color:'var(--text-primary)',whiteSpace:'nowrap',display:'flex',alignItems:'center',cursor:'pointer',borderRadius:'8px',transition:'background 0.2s',background: pi%2===1 ? 'rgba(99,102,241,0.04)' : ''}"
                                              @click="drillToBizPerson(person)"
-                                             @mouseenter="$event.currentTarget.style.background='rgba(99,102,241,0.06)'" @mouseleave="$event.currentTarget.style.background=''">
+                                             @mouseenter="$event.currentTarget.style.background='rgba(99,102,241,0.08)'" @mouseleave="$event.currentTarget.style.background= pi%2===1 ? 'rgba(99,102,241,0.04)' : ''">
                                             <div style="width:6px;height:6px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a855f7);margin-right:8px;flex-shrink:0"></div>
                                             {{person}}
                                         </div>
                                         <div v-for="stage in bizCsmStageMatrix.stages" :key="person+'-'+stage"
-                                             style="padding:6px 4px;text-align:center;display:flex;align-items:center;justify-content:center;min-height:40px">
+                                             :style="{padding:'6px 4px',textAlign:'center',display:'flex',alignItems:'center',justifyContent:'center',minHeight:'40px',borderRadius:'6px',background: pi%2===1 ? 'rgba(99,102,241,0.04)' : ''}">
                                             <template v-if="(bizCsmStageMatrix.matrix[person]||{})[stage]">
                                                 <div @click.stop="drillToBizPersonStage(person, stage)"
                                                      style="width:100%;max-width:56px;padding:6px 4px;border-radius:10px;font-weight:700;cursor:pointer;transition:all 0.25s cubic-bezier(.4,0,.2,1);position:relative"
@@ -2074,9 +2074,9 @@
                                                 <div style="color:#e2e8f0;font-size:12px;font-weight:400">-</div>
                                             </template>
                                         </div>
-                                        <div style="padding:10px 8px;text-align:center;font-weight:800;font-size:15px;color:#7c3aed;background:linear-gradient(135deg,rgba(99,102,241,0.06),rgba(139,92,246,0.06));border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center"
+                                        <div :style="{padding:'10px 8px',textAlign:'center',fontWeight:'800',fontSize:'15px',color:'#7c3aed',borderRadius:'8px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',background: pi%2===1 ? 'linear-gradient(135deg,rgba(99,102,241,0.10),rgba(139,92,246,0.10))' : 'linear-gradient(135deg,rgba(99,102,241,0.06),rgba(139,92,246,0.06))'}"
                                              @click="drillToBizPerson(person)"
-                                             @mouseenter="$event.currentTarget.style.background='linear-gradient(135deg,rgba(99,102,241,0.12),rgba(139,92,246,0.12))'" @mouseleave="$event.currentTarget.style.background='linear-gradient(135deg,rgba(99,102,241,0.06),rgba(139,92,246,0.06))'">
+                                             @mouseenter="$event.currentTarget.style.background='linear-gradient(135deg,rgba(99,102,241,0.16),rgba(139,92,246,0.16))'" @mouseleave="$event.currentTarget.style.background= pi%2===1 ? 'linear-gradient(135deg,rgba(99,102,241,0.10),rgba(139,92,246,0.10))' : 'linear-gradient(135deg,rgba(99,102,241,0.06),rgba(139,92,246,0.06))'">
                                             {{Object.values(bizCsmStageMatrix.matrix[person]||{}).reduce((a,b)=>a+b,0)}}
                                         </div>
                                     </template>
