@@ -1467,8 +1467,16 @@
                 </div>
                 <div class="nav-group">
                     <div class="nav-title">客户管理</div>
-                    <div class="nav-item" :class="{active: currentView === '华东区域-ATS客户'}" @click="switchView('华东区域-ATS客户')"><span class="icon">🏢</span><span class="text">ATS客户</span><span class="badge count">{{getCount('华东区域-ATS客户')}}</span></div>
-                    <div class="nav-item" :class="{active: currentView === '华东区域一体化客户'}" @click="switchView('华东区域一体化客户')"><span class="icon">🔗</span><span class="text">一体化客户</span><span class="badge count">{{getCount('华东区域一体化客户')}}</span></div>
+                    <div class="nav-item has-children" :class="{active: currentView === '华东区域-ATS客户'}" @click="switchView('华东区域-ATS客户')"><span class="icon">🏢</span><span class="text">ATS客户</span><span class="badge count">{{getCount('华东区域-ATS客户')}}</span><span class="nav-arrow" :class="{expanded: atsMenuExpanded}" @click.stop="toggleAtsMenu">▼</span></div>
+                    <div class="nav-sub-group" :class="{expanded: atsMenuExpanded}">
+                        <div class="nav-sub-item" :class="{active: currentView === '华东区域-ATS客户' && customerSubTab === 'list'}" @click="switchSubTab('list')"><span class="sub-icon">📋</span><span>客户列表</span></div>
+                        <div class="nav-sub-item" :class="{active: currentView === '华东区域-ATS客户' && customerSubTab === 'chart'}" @click="switchSubTab('chart')"><span class="sub-icon">📊</span><span>CSS分布</span></div>
+                    </div>
+                    <div class="nav-item has-children" :class="{active: currentView === '华东区域一体化客户'}" @click="switchView('华东区域一体化客户')"><span class="icon">🔗</span><span class="text">一体化客户</span><span class="badge count">{{getCount('华东区域一体化客户')}}</span><span class="nav-arrow" :class="{expanded: yhtMenuExpanded}" @click.stop="toggleYhtMenu">▼</span></div>
+                    <div class="nav-sub-group" :class="{expanded: yhtMenuExpanded}">
+                        <div class="nav-sub-item" :class="{active: currentView === '华东区域一体化客户' && customerSubTab === 'list'}" @click="switchSubTab('list')"><span class="sub-icon">📋</span><span>客户列表</span></div>
+                        <div class="nav-sub-item" :class="{active: currentView === '华东区域一体化客户' && customerSubTab === 'chart'}" @click="switchSubTab('chart')"><span class="sub-icon">📊</span><span>CSS分布</span></div>
+                    </div>
                     <div class="nav-item" :class="{active: currentView === '华东区域-国际版客户'}" @click="switchView('华东区域-国际版客户')"><span class="icon">🌏</span><span class="text">国际版客户</span><span class="badge count">{{getCount('华东区域-国际版客户')}}</span></div>
                 </div>
                 <div class="nav-group">
@@ -2206,6 +2214,53 @@
                 
                 <!-- 客户列表页面（通用） -->
                 <template v-else>
+                    <!-- CSS分布柱状图（ATS客户/一体化客户专属） -->
+                    <div v-if="(currentView === '华东区域-ATS客户' || currentView === '华东区域一体化客户') && customerSubTab === 'chart'">
+                        <div class="breadcrumb">
+                            <button class="btn btn-sm btn-default" @click="goBack" v-if="returnView"><span>←</span> 返回数据看板</button>
+                            <span style="margin-left:12px">{{currentView}} · CSS分布</span>
+                            <span style="color:#909399;margin-left:8px">{{cssDistribution.length}}位CSS · {{filteredData.length}}客户</span>
+                        </div>
+                        <div class="panel">
+                            <div class="panel-body">
+                                <div v-if="cssDistribution.length === 0" style="text-align:center;padding:48px;color:#909399">暂无数据</div>
+                                <div v-else style="padding:16px 0">
+                                    <div v-for="(item, idx) in cssDistribution" :key="idx"
+                                        style="display:flex;align-items:center;margin-bottom:14px;padding:4px 0;border-radius:6px;transition:background 0.2s"
+                                        :style="{background: (item.count / cssDistMax) > 0.5 ? 'rgba(59,130,246,0.04)' : 'transparent'}"
+                                        @mouseenter="$event.currentTarget.style.background='rgba(59,130,246,0.10)'"
+                                        @mouseleave="$event.currentTarget.style.background=(item.count/cssDistMax)>0.5?'rgba(59,130,246,0.04)':'transparent'">
+                                        <!-- CSS人员名 -->
+                                        <div style="width:100px;flex-shrink:0;text-align:right;padding-right:16px;font-size:14px;color:#1e293b;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" :title="item.name">{{item.name}}</div>
+                                        <!-- 柱体 -->
+                                        <div style="flex:1;min-width:0">
+                                            <div style="height:28px;border-radius:4px;background:linear-gradient(90deg, #3b82f6, #8b5cf6);transition:all 0.3s;position:relative;min-width:4px"
+                                                :style="{width: Math.max((item.count / cssDistMax) * 100, 2) + '%'}">
+                                                <!-- 悬停效果 -->
+                                            </div>
+                                        </div>
+                                        <!-- 数值 -->
+                                        <div style="width:48px;flex-shrink:0;text-align:left;padding-left:12px;font-size:14px;font-weight:700;color:#3b82f6">
+                                            {{item.count}}<span style="font-size:11px;color:#64748b;font-weight:400;margin-left:2px">家</span>
+                                        </div>
+                                        <!-- 占比 -->
+                                        <div style="width:56px;flex-shrink:0;text-align:left;padding-left:8px;font-size:12px;color:#64748b">
+                                            {{(item.count / filteredData.length * 100).toFixed(1)}}%
+                                        </div>
+                                    </div>
+                                    <!-- 图例 -->
+                                    <div style="display:flex;align-items:center;justify-content:flex-end;margin-top:20px;padding-top:12px;border-top:1px solid #1e293b;gap:24px">
+                                        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#64748b">
+                                            <span style="width:12px;height:12px;border-radius:2px;background:linear-gradient(90deg,#3b82f6,#8b5cf6)"></span>客户数量
+                                        </div>
+                                        <div style="font-size:12px;color:#64748b">共 {{filteredData.length}} 家客户 · {{cssDistribution.length}} 位CSS</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 客户列表（默认表格） -->
+                    <div v-else>
                     <div class="breadcrumb">
                         <button class="btn btn-sm btn-default" @click="goBack" v-if="returnView"><span>←</span> 返回数据看板</button>
                         <span style="margin-left:12px">{{currentView}}</span>
@@ -2275,6 +2330,7 @@
                                 <button class="page-btn" :disabled="currentPage===totalPages" @click="currentPage++">下一页</button>
                             </div>
                         </div>
+                    </div>
                     </div>
                 </template>
 
@@ -5789,8 +5845,8 @@
                                     "客户名称": "云汉芯城（上海）互联网科技股份有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "邹珍姝",
-                                    "CSM": "兰诗维",
+                                    "当前CSS": "兰诗维",
+                                    "CSM": "邹珍姝",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5798,8 +5854,8 @@
                                     "客户名称": "北京全量全速科技有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "邹珍姝",
-                                    "CSM": "兰诗维",
+                                    "当前CSS": "兰诗维",
+                                    "CSM": "邹珍姝",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5807,8 +5863,8 @@
                                     "客户名称": "大秦数据能源技术股份有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "邹珍姝",
-                                    "CSM": "兰诗维",
+                                    "当前CSS": "兰诗维",
+                                    "CSM": "邹珍姝",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5816,8 +5872,8 @@
                                     "客户名称": "上海天瑞金置业集团有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "邹珍姝",
-                                    "CSM": "兰诗维",
+                                    "当前CSS": "兰诗维",
+                                    "CSM": "邹珍姝",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5825,8 +5881,8 @@
                                     "客户名称": "上海寻规科技有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "邹珍姝",
-                                    "CSM": "兰诗维",
+                                    "当前CSS": "兰诗维",
+                                    "CSM": "邹珍姝",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5834,8 +5890,8 @@
                                     "客户名称": "星环信息科技（上海）股份有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "邹珍姝",
-                                    "CSM": "兰诗维",
+                                    "当前CSS": "兰诗维",
+                                    "CSM": "邹珍姝",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5843,8 +5899,8 @@
                                     "客户名称": "浙江庭乐家居用品有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "邹珍姝",
-                                    "CSM": "兰诗维",
+                                    "当前CSS": "兰诗维",
+                                    "CSM": "邹珍姝",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5852,8 +5908,8 @@
                                     "客户名称": "汇联易",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "邹珍姝",
-                                    "CSM": "兰诗维",
+                                    "当前CSS": "兰诗维",
+                                    "CSM": "邹珍姝",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5861,8 +5917,8 @@
                                     "客户名称": "环洋经典文化发展（上海）有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "邹珍姝",
-                                    "CSM": "兰诗维",
+                                    "当前CSS": "兰诗维",
+                                    "CSM": "邹珍姝",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5870,8 +5926,8 @@
                                     "客户名称": "江苏瑞祥科技集团有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "邹珍姝",
-                                    "CSM": "兰诗维",
+                                    "当前CSS": "兰诗维",
+                                    "CSM": "邹珍姝",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5879,8 +5935,8 @@
                                     "客户名称": "浙江医学科技开发有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "邹珍姝",
-                                    "CSM": "兰诗维",
+                                    "当前CSS": "兰诗维",
+                                    "CSM": "邹珍姝",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5888,8 +5944,8 @@
                                     "客户名称": "上海能良电子科技有限公司/招聘已断约",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "邹珍姝",
-                                    "CSM": "兰诗维",
+                                    "当前CSS": "兰诗维",
+                                    "CSM": "邹珍姝",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5906,8 +5962,8 @@
                                     "客户名称": "杭州伸美品牌管理有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "张添顺",
-                                    "CSM": "刘彦昭",
+                                    "当前CSS": "刘彦昭",
+                                    "CSM": "张添顺",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5915,8 +5971,8 @@
                                     "客户名称": "六晟信息科技（杭州）有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "张添顺",
-                                    "CSM": "刘彦昭",
+                                    "当前CSS": "刘彦昭",
+                                    "CSM": "张添顺",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5924,8 +5980,8 @@
                                     "客户名称": "浙江博采传媒有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "张添顺",
-                                    "CSM": "刘彦昭",
+                                    "当前CSS": "刘彦昭",
+                                    "CSM": "张添顺",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5933,8 +5989,8 @@
                                     "客户名称": "杭州大有泰健康科技有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "张添顺",
-                                    "CSM": "刘彦昭",
+                                    "当前CSS": "刘彦昭",
+                                    "CSM": "张添顺",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5942,8 +5998,8 @@
                                     "客户名称": "婚礼纪",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "张添顺",
-                                    "CSM": "刘彦昭",
+                                    "当前CSS": "刘彦昭",
+                                    "CSM": "张添顺",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5951,8 +6007,8 @@
                                     "客户名称": "杭州青井电子商务有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "张添顺",
-                                    "CSM": "刘彦昭",
+                                    "当前CSS": "刘彦昭",
+                                    "CSM": "张添顺",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5960,8 +6016,8 @@
                                     "客户名称": "挖财",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "张添顺",
-                                    "CSM": "刘彦昭",
+                                    "当前CSS": "刘彦昭",
+                                    "CSM": "张添顺",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5969,8 +6025,8 @@
                                     "客户名称": "杭州百伦思宠物用品有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "张添顺",
-                                    "CSM": "刘彦昭",
+                                    "当前CSS": "刘彦昭",
+                                    "CSM": "张添顺",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5978,8 +6034,8 @@
                                     "客户名称": "杭州核力欣健实业股份有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "张添顺",
-                                    "CSM": "刘彦昭",
+                                    "当前CSS": "刘彦昭",
+                                    "CSM": "张添顺",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5987,8 +6043,8 @@
                                     "客户名称": "浙江欧凯车业有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "张添顺",
-                                    "CSM": "刘彦昭",
+                                    "当前CSS": "刘彦昭",
+                                    "CSM": "张添顺",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -5996,8 +6052,8 @@
                                     "客户名称": "浙江蓝宸信息科技有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "张添顺",
-                                    "CSM": "刘彦昭",
+                                    "当前CSS": "刘彦昭",
+                                    "CSM": "张添顺",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -6005,8 +6061,8 @@
                                     "客户名称": "杭州集米网络科技服务有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "张添顺",
-                                    "CSM": "刘彦昭",
+                                    "当前CSS": "刘彦昭",
+                                    "CSM": "张添顺",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -6014,8 +6070,8 @@
                                     "客户名称": "马拉丁",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "张添顺",
-                                    "CSM": "刘彦昭",
+                                    "当前CSS": "刘彦昭",
+                                    "CSM": "张添顺",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -6023,8 +6079,8 @@
                                     "客户名称": "鲸灵智能",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "张添顺",
-                                    "CSM": "刘彦昭",
+                                    "当前CSS": "刘彦昭",
+                                    "CSM": "张添顺",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -6032,8 +6088,8 @@
                                     "客户名称": "鸭鸭电子商务（杭州）有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "张添顺",
-                                    "CSM": "刘彦昭",
+                                    "当前CSS": "刘彦昭",
+                                    "CSM": "张添顺",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -6041,8 +6097,8 @@
                                     "客户名称": "浙江海心智惠科技有限公司",
                                     "客户所属区域": "华南",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "张添顺",
-                                    "CSM": "刘彦昭",
+                                    "当前CSS": "刘彦昭",
+                                    "CSM": "张添顺",
                                     "Back-CSS": "周旺",
                                     "备注": ""
                         },
@@ -6050,8 +6106,8 @@
                                     "客户名称": "上海七猫文化传媒有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6059,8 +6115,8 @@
                                     "客户名称": "万国数据服务有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6068,8 +6124,8 @@
                                     "客户名称": "上海万木生源家居有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6077,8 +6133,8 @@
                                     "客户名称": "东陶（中国）有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6086,8 +6142,8 @@
                                     "客户名称": "中通数科",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6095,8 +6151,8 @@
                                     "客户名称": "上海仙工智能科技有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6104,8 +6160,8 @@
                                     "客户名称": "仟传网络科技（上海）有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6113,8 +6169,8 @@
                                     "客户名称": "上海众引文化传播股份有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6122,8 +6178,8 @@
                                     "客户名称": "利多星（上海）投资管理有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6131,8 +6187,8 @@
                                     "客户名称": "安徽省华安进出口有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6140,8 +6196,8 @@
                                     "客户名称": "上海唯寻教育科技有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6149,8 +6205,8 @@
                                     "客户名称": "上海图趣信息科技有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6158,8 +6214,8 @@
                                     "客户名称": "声网",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6167,8 +6223,8 @@
                                     "客户名称": "Fosun Wealth Management Services Limited",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6176,8 +6232,8 @@
                                     "客户名称": "安徽容知日新科技股份有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6185,8 +6241,8 @@
                                     "客户名称": "小视科技（江苏）股份有限公司/招聘已断约",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6194,8 +6250,8 @@
                                     "客户名称": "深圳惠泰医疗器械股份有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6203,8 +6259,8 @@
                                     "客户名称": "时玥时尚科技（上海）有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6212,8 +6268,8 @@
                                     "客户名称": "安徽星邦众联网络科技有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6221,8 +6277,8 @@
                                     "客户名称": "橙联（中国）有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6230,8 +6286,8 @@
                                     "客户名称": "上海洛轲智能科技有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6239,8 +6295,8 @@
                                     "客户名称": "耀乘健康",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6248,8 +6304,8 @@
                                     "客户名称": "上海芯源微企业发展有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6257,8 +6313,8 @@
                                     "客户名称": "南京芯驰半导体科技有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6266,8 +6322,8 @@
                                     "客户名称": "上海迪果网络科技有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6275,8 +6331,8 @@
                                     "客户名称": "上海黑焰医疗科技有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6284,8 +6340,8 @@
                                     "客户名称": "上海姜根酒店管理有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6293,8 +6349,8 @@
                                     "客户名称": "腾竞体育文化发展（上海）有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "兰诗维",
                                     "备注": ""
                         },
@@ -6302,8 +6358,8 @@
                                     "客户名称": "维视艾康特（广东）医疗科技股份有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "兰诗维",
                                     "备注": ""
                         },
@@ -6311,8 +6367,8 @@
                                     "客户名称": "上海艾秒广告有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "兰诗维",
                                     "备注": ""
                         },
@@ -6320,8 +6376,8 @@
                                     "客户名称": "上海荟力电子商务有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "兰诗维",
                                     "备注": ""
                         },
@@ -6329,8 +6385,8 @@
                                     "客户名称": "深圳萨摩耶数字科技有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "兰诗维",
                                     "备注": ""
                         },
@@ -6338,8 +6394,8 @@
                                     "客户名称": "观远数据",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "兰诗维",
                                     "备注": ""
                         },
@@ -6347,8 +6403,8 @@
                                     "客户名称": "赞同科技股份有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "兰诗维",
                                     "备注": ""
                         },
@@ -6356,8 +6412,8 @@
                                     "客户名称": "上海鸭嘴兽网络科技有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "兰诗维",
                                     "备注": ""
                         },
@@ -6365,8 +6421,8 @@
                                     "客户名称": "金拱门（中国）有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "兰诗维",
                                     "备注": ""
                         },
@@ -6374,8 +6430,8 @@
                                     "客户名称": "安徽中科光电色选机械有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "刘彦昭",
                                     "备注": ""
                         },
@@ -6383,8 +6439,8 @@
                                     "客户名称": "司享驾（上海）商务服务有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "兰诗维",
                                     "备注": ""
                         },
@@ -6392,12 +6448,12 @@
                                     "客户名称": "麒盛科技股份有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "",
-                                    "CSM": "周旺",
+                                    "当前CSS": "周旺",
+                                    "CSM": "",
                                     "Back-CSS": "魏雨濛",
                                     "备注": ""
                         }
-                    ],
+            ],
             "华东区域-国际版客户": [
                         {
                                     "客户名称": "移远",
@@ -7890,6 +7946,30 @@
             const bizMenuExpanded = ref(false);
             const toggleBizMenu = () => { bizMenuExpanded.value = !bizMenuExpanded.value; };
             
+            // ATS客户 / 一体化客户 二级菜单
+            const atsMenuExpanded = ref(false);
+            const yhtMenuExpanded = ref(false);
+            const customerSubTab = ref('list'); // 'list' | 'chart'
+            const toggleAtsMenu = () => { atsMenuExpanded.value = !atsMenuExpanded.value; };
+            const toggleYhtMenu = () => { yhtMenuExpanded.value = !yhtMenuExpanded.value; };
+            const switchSubTab = (tab) => { customerSubTab.value = tab; };
+            
+            // CSS分布统计
+            const cssDistribution = computed(() => {
+                const data = allData.value[currentView.value] || [];
+                if (currentView.value !== '华东区域-ATS客户' && currentView.value !== '华东区域一体化客户') return [];
+                const map = {};
+                data.forEach(item => {
+                    const name = item['当前CSS'] || '未知';
+                    map[name] = (map[name] || 0) + 1;
+                });
+                return Object.entries(map).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+            });
+            const cssDistMax = computed(() => {
+                if (cssDistribution.value.length === 0) return 1;
+                return Math.max(...cssDistribution.value.map(d => d.count));
+            });
+            
             const switchView = (v, saveReturn = false) => {
                 // 如果是从数据看板点击统计卡片穿透进来的，保存返回路径
                 if (saveReturn) {
@@ -7911,8 +7991,16 @@
                 if (bizViews.includes(v)) {
                     bizMenuExpanded.value = true;
                 } else {
-                    // 进入其他顶级视图时，自动收起
                     bizMenuExpanded.value = false;
+                }
+                // 自动展开/收起 ATS客户/一体化客户 二级菜单；重置子标签
+                if (v === '华东区域-ATS客户') {
+                    atsMenuExpanded.value = true; yhtMenuExpanded.value = false;
+                } else if (v === '华东区域一体化客户') {
+                    yhtMenuExpanded.value = true; atsMenuExpanded.value = false;
+                } else {
+                    atsMenuExpanded.value = false; yhtMenuExpanded.value = false;
+                    customerSubTab.value = 'list';
                 }
                 if (v === '填写周报') { loadWeeklyReport(); }
                 if (v === '周报汇总') { loadWeekSummary(); }
@@ -8648,6 +8736,8 @@
                 returnView, goBack,
                 // 二级菜单
                 bizMenuExpanded, toggleBizMenu,
+                atsMenuExpanded, yhtMenuExpanded, toggleAtsMenu, toggleYhtMenu,
+                customerSubTab, switchSubTab, cssDistribution, cssDistMax,
                 // 客户搜索下拉
                 customerDropdownOpen, customerSearchText, filteredCustomerList, groupedCustomerList,
                 toggleCustomerDropdown, selectCustomer, clearCustomer, closeCustomerDropdown,
