@@ -1499,7 +1499,11 @@
                 </div>
                 <div class="nav-group">
                     <div class="nav-title">工作记录</div>
-                    <div class="nav-item" :class="{active: currentView === '会话记录'}" @click="switchView('会话记录')"><span class="icon">💬</span><span class="text">会话记录</span></div>
+                    <div class="nav-item has-children" :class="{active: currentView === '会话记录'}" @click="switchView('会话记录')"><span class="icon">💬</span><span class="text">会话记录</span><span class="nav-arrow" :class="{expanded: sessionMenuExpanded}" @click.stop="toggleSessionMenu">▼</span></div>
+                    <div class="nav-sub-group" :class="{expanded: sessionMenuExpanded}">
+                        <div class="nav-sub-item" :class="{active: currentView === '会话记录' && sessionSubTab === 'list'}" @click="switchSessionTab('list')"><span class="sub-icon">📋</span><span>记录列表</span></div>
+                        <div class="nav-sub-item" :class="{active: currentView === '会话记录' && sessionSubTab === 'monthly'}" @click="switchSessionTab('monthly')"><span class="sub-icon">📊</span><span>按月汇总</span></div>
+                    </div>
                     <div class="nav-item" :class="{active: currentView === '配置记录'}" @click="switchView('配置记录')"><span class="icon">⚙️</span><span class="text">配置记录</span><span class="badge count">{{configs.length}}</span></div>
                     <div class="nav-item" :class="{active: currentView === '会议记录'}" @click="switchView('会议记录')"><span class="icon">📞</span><span class="text">会议记录</span><span class="badge count">{{meetings.length}}</span></div>
                 </div>
@@ -1583,6 +1587,7 @@
                     <div class="panel">
                         <div class="panel-header"><span class="panel-title">💬 会话记录</span><span style="color:#909399">{{filteredRecords.length}}条</span></div>
                         <div class="panel-body">
+                            <div v-if="sessionSubTab === 'list'">
                             <div class="toolbar">
                                 <div class="toolbar-left">
                                     <input type="text" class="input input-search" v-model="searchText" @input="filterRecords" placeholder="搜索客户/问题...">
@@ -1638,6 +1643,36 @@
                                 <button class="page-btn" :disabled="recordPage===1" @click="recordPage--">上一页</button>
                                 <button class="page-btn" v-for="p in recordVisiblePages" :key="p" :class="{active:p===recordPage}" @click="recordPage=p">{{p}}</button>
                                 <button class="page-btn" :disabled="recordPage===recordTotalPages" @click="recordPage++">下一页</button>
+                            </div>
+                            </div>
+                            <!-- 按月汇总视图 -->
+                            <div v-else>
+                                <div v-if="sessionMonthlySummary.length === 0" class="empty-state">
+                                    <div class="icon">📊</div>
+                                    <div class="text">暂无数据，请先记录会话</div>
+                                </div>
+                                <div v-else class="table-wrap">
+                                    <table>
+                                        <thead><tr>
+                                            <th style="min-width:80px">CSS姓名</th>
+                                            <th v-for="m in sessionMonths" :key="m" style="text-align:center;min-width:70px">{{m}}</th>
+                                            <th style="text-align:center;min-width:60px;background:#f0f9eb">合计</th>
+                                        </tr></thead>
+                                        <tbody>
+                                            <tr v-for="(row,idx) in sessionMonthlySummary" :key="idx" :style="{background: idx%2===0?'':'#fafbfc'}">
+                                                <td style="font-weight:600">{{row.css}}</td>
+                                                <td v-for="m in sessionMonths" :key="m" style="text-align:center">{{row[m] || 0}}</td>
+                                                <td style="text-align:center;font-weight:700;color:#409eff">{{row.total}}</td>
+                                            </tr>
+                                            <!-- 合计行 -->
+                                            <tr style="background:#f0f9eb;font-weight:700">
+                                                <td>合计</td>
+                                                <td v-for="m in sessionMonths" :key="m" style="text-align:center">{{sessionMonthlySummary.reduce((s,r)=>s+(r[m]||0),0)}}</td>
+                                                <td style="text-align:center;color:#409eff">{{sessionMonthlySummary.reduce((s,r)=>s+r.total,0)}}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -7610,6 +7645,49 @@
             
             const filterRecords = () => { recordPage.value = 1; };
             
+            // 会话记录子视图切换
+            const sessionSubTab = ref('list'); // 'list' | 'monthly'
+            const switchSessionTab = (tab) => { 
+                sessionSubTab.value = tab; 
+                if (currentView.value !== '会话记录') switchView('会话记录');
+            };
+            
+            // 按月汇总：按CSS姓名分组，统计每月记录数
+            const sessionMonths = computed(() => {
+                const months = new Set();
+                records.value.forEach(r => {
+                    if (r.提交时间 && r.提交时间.length >= 7) months.add(r.提交时间.substring(0, 7));
+                });
+                return [...months].sort();
+            });
+            
+            const sessionMonthlySummary = computed(() => {
+                const months = sessionMonths.value;
+                if (months.length === 0) return [];
+                // 按CSS分组统计
+                const cssMap = {};
+                records.value.forEach(r => {
+                    const css = r['CSS姓名'] || '未知';
+                    const m = r.提交时间 && r.提交时间.length >= 7 ? r.提交时间.substring(0, 7) : null;
+                    if (!m) return;
+                    if (!cssMap[css]) cssMap[css] = {};
+                    cssMap[css][m] = (cssMap[css][m] || 0) + 1;
+                });
+                // 构建汇总行
+                const result = [];
+                Object.entries(cssMap).forEach(([css, monthCounts]) => {
+                    const row = { css, total: 0 };
+                    months.forEach(m => {
+                        row[m] = monthCounts[m] || 0;
+                        row.total += row[m];
+                    });
+                    result.push(row);
+                });
+                // 按合计降序排序
+                result.sort((a, b) => b.total - a.total);
+                return result;
+            });
+            
             // 配置记录相关
             const filteredConfigs = computed(() => {
                 let d = configs.value;
@@ -7952,6 +8030,8 @@
             const customerSubTab = ref('list'); // 'list' | 'chart'
             const toggleAtsMenu = () => { atsMenuExpanded.value = !atsMenuExpanded.value; };
             const toggleYhtMenu = () => { yhtMenuExpanded.value = !yhtMenuExpanded.value; };
+            const sessionMenuExpanded = ref(false);
+            const toggleSessionMenu = () => { sessionMenuExpanded.value = !sessionMenuExpanded.value; };
             const switchSubTab = (tab) => { customerSubTab.value = tab; };
             
             // CSS分布统计
@@ -7998,8 +8078,10 @@
                     atsMenuExpanded.value = true; yhtMenuExpanded.value = false;
                 } else if (v === '华东区域一体化客户') {
                     yhtMenuExpanded.value = true; atsMenuExpanded.value = false;
+                } else if (v === '会话记录') {
+                    sessionMenuExpanded.value = true;
                 } else {
-                    atsMenuExpanded.value = false; yhtMenuExpanded.value = false;
+                    atsMenuExpanded.value = false; yhtMenuExpanded.value = false; sessionMenuExpanded.value = false;
                     customerSubTab.value = 'list';
                 }
                 if (v === '填写周报') { loadWeeklyReport(); }
@@ -8715,6 +8797,7 @@
                 // 会话记录
                 recordPage, filteredRecords, paginatedRecords, recordTotalPages, recordVisiblePages, searchText, filterChannel, filterStatus, filterDate, filterDateStart, filterDateEnd, filterCss, filterRecords,
                 openRecordModal, openRecordModalFromDashboard, openRecordDetail, copyRecord, confirmDeleteRecord, exportRecordsExcel, recordColumns,
+                sessionSubTab, switchSessionTab, sessionMonthlySummary, sessionMonths,
                 // 配置记录
                 configPage, filteredConfigs, paginatedConfigs, configTotalPages, configVisiblePages, configFilterSource, configFilterDate, configFilterDateStart, configFilterDateEnd, configFilterCss, filterConfigs,
                 openConfigModal, openConfigDetail, confirmDeleteConfig, exportConfigsExcel, configColumns,
@@ -8737,6 +8820,7 @@
                 // 二级菜单
                 bizMenuExpanded, toggleBizMenu,
                 atsMenuExpanded, yhtMenuExpanded, toggleAtsMenu, toggleYhtMenu,
+                sessionMenuExpanded, toggleSessionMenu,
                 customerSubTab, switchSubTab, cssDistribution, cssDistMax,
                 // 客户搜索下拉
                 customerDropdownOpen, customerSearchText, filteredCustomerList, groupedCustomerList,
