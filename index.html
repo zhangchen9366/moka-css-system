@@ -2914,7 +2914,7 @@
                 fieldManageVisible.value = true;
             };
             
-            const allData = ref({
+            const EMBEDDED_DATA = {
             "华东区域-ATS客户": [
                         {
                                     "字段1": "Bitget Limited.",
@@ -7255,7 +7255,26 @@
                                     "当前使用情况": "药明的Eva试用已经延期到5/7 近期在手动维护经理角色保证试用进展"
                         }
             ]
-});
+});;
+            // 受管理的数据集（Excel导入，始终以HTML内嵌数据为准）
+            const MANAGED_DATASETS = ['华东区域一体化客户'];
+            
+            const allData = ref(JSON.parse(JSON.stringify(EMBEDDED_DATA)));
+            
+            // 从localStorage恢复，受管理数据集强制使用内嵌数据
+            const saved = localStorage.getItem('customerData');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    Object.keys(EMBEDDED_DATA).forEach(key => {
+                        if (MANAGED_DATASETS.includes(key)) {
+                            allData.value[key] = JSON.parse(JSON.stringify(EMBEDDED_DATA[key]));
+                        } else if (parsed[key]) {
+                            allData.value[key] = parsed[key];
+                        }
+                    });
+                } catch(e) {}
+            }
             
             // 会话记录数据
             const records = ref(JSON.parse(localStorage.getItem('workRecords') || '[]'));
@@ -7737,14 +7756,9 @@
                 });
             };
             
-            // 数据持久化 - 版本号控制，新版本自动替换 localStorage
-            const DATA_VERSION = '2026-05-21-v2';
-            const savedVersion = localStorage.getItem('customerDataVersion');
-            const saved = localStorage.getItem('customerData');
-            if (saved && savedVersion === DATA_VERSION) { try { allData.value = JSON.parse(saved); } catch(e) {} }
-            else { localStorage.setItem('customerDataVersion', DATA_VERSION); }
+            // 数据持久化 - 受管理数据集已在初始化时合并处理，此处仅保留用户编辑数据
             
-            const saveToStorage = () => { localStorage.setItem('customerData', JSON.stringify(allData.value)); localStorage.setItem('customerDataVersion', DATA_VERSION); };
+            const saveToStorage = () => { localStorage.setItem('customerData', JSON.stringify(allData.value)); };
             const saveRecords = () => { localStorage.setItem('workRecords', JSON.stringify(records.value)); };
             const saveConfigs = () => { localStorage.setItem('workConfigs', JSON.stringify(configs.value)); };
             const saveMeetings = () => { localStorage.setItem('workMeetings', JSON.stringify(meetings.value)); };
