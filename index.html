@@ -7737,11 +7737,14 @@
                 });
             };
             
-            // 数据持久化
+            // 数据持久化 - 版本号控制，新版本自动替换 localStorage
+            const DATA_VERSION = '2026-05-21-v2';
+            const savedVersion = localStorage.getItem('customerDataVersion');
             const saved = localStorage.getItem('customerData');
-            if (saved) { try { allData.value = JSON.parse(saved); } catch(e) {} }
+            if (saved && savedVersion === DATA_VERSION) { try { allData.value = JSON.parse(saved); } catch(e) {} }
+            else { localStorage.setItem('customerDataVersion', DATA_VERSION); }
             
-            const saveToStorage = () => { localStorage.setItem('customerData', JSON.stringify(allData.value)); };
+            const saveToStorage = () => { localStorage.setItem('customerData', JSON.stringify(allData.value)); localStorage.setItem('customerDataVersion', DATA_VERSION); };
             const saveRecords = () => { localStorage.setItem('workRecords', JSON.stringify(records.value)); };
             const saveConfigs = () => { localStorage.setItem('workConfigs', JSON.stringify(configs.value)); };
             const saveMeetings = () => { localStorage.setItem('workMeetings', JSON.stringify(meetings.value)); };
