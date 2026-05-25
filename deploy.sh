@@ -24,7 +24,7 @@ echo ""
 
 # 2️⃣ Gitee 同步
 echo "📦 推送到 Gitee..."
-git push gitee main 2>/dev/null && echo "   ✅ Gitee 已同步" || echo "   ⚠️  Gitee 推送失败（已跳过）"
+git push gitee main --force-with-lease 2>/dev/null && echo "   ✅ Gitee 已同步" || echo "   ⚠️  Gitee 推送失败（已跳过）"
 
 echo ""
 
