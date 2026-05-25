@@ -1,6 +1,7 @@
 # 敏感/本地文件
 scripts/.cookies.json
 scripts/.env
+.cos.conf
 
 # Node
 node_modules/
