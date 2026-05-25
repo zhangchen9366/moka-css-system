@@ -40,16 +40,25 @@ config = CosConfig(
     SecretKey=os.environ.get('COS_SECRET_KEY', '$COS_SECRET_KEY')
 )
 client = CosS3Client(config)
+bucket = os.environ.get('COS_BUCKET', '$COS_BUCKET')
 
-with open('$PROJECT_DIR/index.html', 'rb') as f:
-    client.put_object(
-        Bucket=os.environ.get('COS_BUCKET', '$COS_BUCKET'),
-        Key='index.html',
-        Body=f,
-        ContentType='text/html; charset=utf-8',
-        CacheControl='no-cache'
-    )
-print("   ✅ COS 已更新")
+files = {
+    'index.html': 'text/html; charset=utf-8',
+    'vue.global.prod.js': 'application/javascript',
+    'echarts.min.js': 'application/javascript',
+    'xlsx.full.min.js': 'application/javascript',
+}
+
+for filename, content_type in files.items():
+    with open(f'$PROJECT_DIR/{filename}', 'rb') as f:
+        client.put_object(
+            Bucket=bucket,
+            Key=filename,
+            Body=f,
+            ContentType=content_type,
+            CacheControl='no-cache'
+        )
+    print(f"   ✅ {filename}")
 PYEOF
 
 echo ""
