@@ -1536,8 +1536,9 @@
                             <span v-if="lastSyncTime" style="font-size:12px;color:#909399;margin-right:12px">上次同步: {{lastSyncTime}}</span>
                             <button class="btn btn-default" @click="loadAllFromCloud" :disabled="isSyncing" style="margin-right:8px">☁️ 从云端加载</button>
                             <button class="btn btn-primary" @click="syncAllToCloud" :disabled="isSyncing">{{isSyncing?'同步中...':'☁️ 立即同步'}}</button>
-                            <button class="btn btn-default" @click="showImportModal=true" style="margin-left:8px">📥 导入</button>
+                            <button class="btn btn-default" @click="showImportModal=true" style="margin-left:8px">📥 导入JSON</button>
                             <button class="btn btn-default" @click="exportAll">📤 导出Excel</button>
+                            <button class="btn btn-default" @click="exportAllJSON" style="margin-left:8px">💾 导出JSON</button>
                         </div>
                     </div>
                     <div class="panel">
@@ -2582,7 +2583,7 @@
             <div class="modal" style="max-width:450px">
                 <div class="modal-header"><h3>📥 导入数据</h3><button class="modal-close" @click="showImportModal=false">×</button></div>
                 <div class="modal-body" style="text-align:center">
-                    <p style="margin-bottom:16px">上传JSON格式数据文件</p>
+                    <p style="margin-bottom:16px">上传 💾 导出JSON 生成的数据备份文件<br><small style="color:#909399">在不同地址间迁移数据（如GitHub Pages → 本地服务器）</small></p>
                     <input type="file" accept=".json" @change="handleImport">
                 </div>
                 <div class="modal-footer"><button class="btn btn-default" @click="showImportModal=false">关闭</button></div>
@@ -8573,6 +8574,17 @@
                 showToast('导出成功');
             };
             
+            const exportAllJSON = () => {
+                const json = JSON.stringify(allData.value, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `数据备份_${new Date().toISOString().slice(0,10)}.json`;
+                a.click();
+                URL.revokeObjectURL(a.href);
+                showToast('JSON导出成功，可在其他地址导入');
+            };
+            
             const handleImport = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -8810,7 +8822,7 @@
                 columns, tableData, filteredData, paginatedData, totalPages, visiblePages,
                 // 周报历史
                 myWeeklyHistory,
-                getCount, switchView, filterTable, filterHistory, getColWidth, getRowClass, getTypeClass, getStatusClass, truncate, openDetail, openAdd, openEdit, saveForm, confirmDelete, doDelete, exportCurrentExcel, exportAll, handleImport, showToast, copyToClipboard,
+                getCount, switchView, filterTable, filterHistory, getColWidth, getRowClass, getTypeClass, getStatusClass, truncate, openDetail, openAdd, openEdit, saveForm, confirmDelete, doDelete, exportCurrentExcel, exportAll, exportAllJSON, handleImport, showToast, copyToClipboard,
                 // 详情样式
                 getDetailItemClass, getDetailValueClass, getDetailLabel, parseAttachments,
                 // 字段管理
