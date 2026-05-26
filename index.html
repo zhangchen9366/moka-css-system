@@ -1534,7 +1534,7 @@
                         <h2>📈 数据看板</h2>
                         <div>
                             <span v-if="lastSyncTime" style="font-size:12px;color:#909399;margin-right:12px">上次同步: {{lastSyncTime}}</span>
-                            <button class="btn btn-default" @click="loadAllFromCloud" :disabled="isSyncing" style="margin-right:8px" title="从云端拉取并合并数据，不会覆盖本地">☁️ 拉取合并</button>
+                            <button class="btn btn-default" @click="loadAllFromCloud" :disabled="isSyncing" style="margin-right:8px" title="从云端拉取并合并数据，不会覆盖本地">{{isSyncing?'加载中...':'☁️ 拉取合并'}}</button>
                             <button class="btn btn-primary" @click="syncAllToCloud" :disabled="isSyncing" title="将本地数据与云端合并，不会丢失任何人的数据">{{isSyncing?'同步中...':'☁️ 合并上传'}}</button>
                             <button class="btn btn-default" @click="showImportModal=true" style="margin-left:8px">📥 导入JSON</button>
                             <button class="btn btn-default" @click="exportAll">📤 导出Excel</button>
@@ -2647,22 +2647,29 @@
             
             // JSONBin API 调用封装
             const jsonbinGet = async (binId) => {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
                 try {
                     const response = await fetch(`${JSONBIN_CONFIG.apiUrl}/b/${binId}/latest`, {
                         headers: {
                             'X-Master-Key': JSONBIN_CONFIG.masterKey
-                        }
+                        },
+                        signal: controller.signal
                     });
+                    clearTimeout(timeoutId);
                     if (!response.ok) throw new Error('获取数据失败');
                     const data = await response.json();
                     return data.record;
                 } catch (error) {
+                    clearTimeout(timeoutId);
                     console.error('JSONBin GET 错误:', error);
                     return null;
                 }
             };
             
             const jsonbinPut = async (binId, data) => {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
                 try {
                     const response = await fetch(`${JSONBIN_CONFIG.apiUrl}/b/${binId}`, {
                         method: 'PUT',
@@ -2670,11 +2677,14 @@
                             'Content-Type': 'application/json',
                             'X-Master-Key': JSONBIN_CONFIG.masterKey
                         },
-                        body: JSON.stringify(data)
+                        body: JSON.stringify(data),
+                        signal: controller.signal
                     });
+                    clearTimeout(timeoutId);
                     if (!response.ok) throw new Error('保存数据失败');
                     return true;
                 } catch (error) {
+                    clearTimeout(timeoutId);
                     console.error('JSONBin PUT 错误:', error);
                     return false;
                 }
@@ -2773,7 +2783,10 @@
             
             // 从云端加载所有数据（合并模式，不会覆盖本地数据）
             const loadAllFromCloud = async () => {
+                isSyncing.value = true;
+                syncError.value = '';
                 const results = [];
+                const startTime = Date.now();
                 try {
                     // 1. 客户数据：云端合并到本地
                     const cloudCustomers = await jsonbinGet(JSONBIN_CONFIG.bins.customers);
@@ -2834,6 +2847,8 @@
                 } catch (error) {
                     console.error('从云端加载数据失败:', error);
                     showToast('加载异常: ' + error.message, 'error');
+                } finally {
+                    isSyncing.value = false;
                 }
             };
             
