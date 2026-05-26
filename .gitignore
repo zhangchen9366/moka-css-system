@@ -10,3 +10,4 @@ package-lock.json
 # 临时文件
 *.log
 .DS_Store
+cos-creds.js

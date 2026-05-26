@@ -2611,22 +2611,82 @@
     <script src="echarts.min.js"></script>
     <script src="vue.global.prod.js"></script>
     <script src="xlsx.full.min.js"></script>
+    <script>window.COS_CREDENTIALS=JSON.parse(atob('eyJTZWNyZXRJZCI6IkFLSUR4d3FoV0Z5a0wwYXpRbnl2ZTlIUFhLRzZ4aklldUNKTSIsIlNlY3JldEtleSI6InhpRlpmWURkb3dUenBWMU5WUTlpNEVPYWVUM2F5OTdyIiwiQnVja2V0IjoibW9rYS1jc3Mtc3lzdGVtLTE0Mjg4MzQ2MjciLCJSZWdpb24iOiJhcC1jaGVuZ2R1In0='))</script>
+    <script src="cos-js-sdk-v5.min.js"></script>
     <script>
     const {createApp, ref, computed, onMounted, onUnmounted, nextTick} = Vue;
     createApp({
         setup() {
-            // ===== JSONBin 云端同步配置 =====
-            const JSONBIN_CONFIG = {
-                masterKey: '$2a$10$94MoVDNRO0bakGDYcTsN3.BEiTefnDwwkXGndi1VuAZqxhKHhggby',
-                bins: {
-                    customers: '69fb0cafaaba882197798d05',
-                    records: '69fb0cd5856a682189b1a41d',
-                    configs: '69fb0ce4aaba882197798e31',
-                    meetings: '69fb0ced36566621a82f8962',
-                    weeklyReports: '69fb0cfb856a682189b1a4c4',
-                    healthScores: '6a089ef2adc21f119aad2ceb'
-                },
-                apiUrl: 'https://api.jsonbin.io/v3'
+            // ===== COS 云端同步配置 =====
+            const COS_CONFIG = window.COS_CREDENTIALS || {
+                Bucket: '',
+                Region: '',
+                SecretId: '',
+                SecretKey: '',
+            };
+            
+            // COS 文件映射
+            const SYNC_FILES = {
+                customers: 'sync/customers.json',
+                records: 'sync/records.json',
+                configs: 'sync/configs.json',
+                meetings: 'sync/meetings.json',
+                weeklyReports: 'sync/weekly-reports.json',
+                healthScores: 'sync/health-scores.json',
+            };
+            
+            // COS 客户端单例
+            let cosClient = null;
+            const isCosReady = () => !!(COS_CONFIG.SecretId && COS_CONFIG.Bucket);
+            const getCosClient = () => {
+                if (!cosClient) {
+                    cosClient = new COS({
+                        SecretId: COS_CONFIG.SecretId,
+                        SecretKey: COS_CONFIG.SecretKey,
+                    });
+                }
+                return cosClient;
+            };
+            
+            // COS API 封装（不抛异常，失败返回 null/false）
+            const cosGet = async (fileKey) => {
+                return new Promise((resolve) => {
+                    getCosClient().getObject({
+                        Bucket: COS_CONFIG.Bucket,
+                        Region: COS_CONFIG.Region,
+                        Key: SYNC_FILES[fileKey],
+                    }, (err, data) => {
+                        if (err) {
+                            console.error('COS GET 错误 (' + fileKey + '):', err);
+                            resolve(null);
+                            return;
+                        }
+                        try {
+                            resolve(JSON.parse(data.Body));
+                        } catch (e) {
+                            console.error('COS JSON 解析失败 (' + fileKey + '):', e);
+                            resolve(null);
+                        }
+                    });
+                });
+            };
+            
+            const cosPut = async (fileKey, data) => {
+                return new Promise((resolve) => {
+                    getCosClient().putObject({
+                        Bucket: COS_CONFIG.Bucket,
+                        Region: COS_CONFIG.Region,
+                        Key: SYNC_FILES[fileKey],
+                        Body: JSON.stringify(data),
+                    }, (err) => {
+                        if (err) {
+                            console.error('COS PUT 错误 (' + fileKey + '):', err);
+                            resolve(false);
+                            return;
+                        }
+                        resolve(true);
+                    });
+                });
             };
             
             // 云端同步状态
@@ -2644,51 +2704,6 @@
                 return ((lowHealthCount.value / healthScoresData.value.length) * 100).toFixed(1);
             });
             const lowHealthCustomers = computed(() => healthScoresData.value.filter(c => c.healthScore < healthThreshold.value));
-            
-            // JSONBin API 调用封装
-            const jsonbinGet = async (binId) => {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000);
-                try {
-                    const response = await fetch(`${JSONBIN_CONFIG.apiUrl}/b/${binId}/latest`, {
-                        headers: {
-                            'X-Master-Key': JSONBIN_CONFIG.masterKey
-                        },
-                        signal: controller.signal
-                    });
-                    clearTimeout(timeoutId);
-                    if (!response.ok) throw new Error('获取数据失败');
-                    const data = await response.json();
-                    return data.record;
-                } catch (error) {
-                    clearTimeout(timeoutId);
-                    console.error('JSONBin GET 错误:', error);
-                    return null;
-                }
-            };
-            
-            const jsonbinPut = async (binId, data) => {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000);
-                try {
-                    const response = await fetch(`${JSONBIN_CONFIG.apiUrl}/b/${binId}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Master-Key': JSONBIN_CONFIG.masterKey
-                        },
-                        body: JSON.stringify(data),
-                        signal: controller.signal
-                    });
-                    clearTimeout(timeoutId);
-                    if (!response.ok) throw new Error('保存数据失败');
-                    return true;
-                } catch (error) {
-                    clearTimeout(timeoutId);
-                    console.error('JSONBin PUT 错误:', error);
-                    return false;
-                }
-            };
             
             // 合并两个数组（按去重键），合并规则：云端为主，本地新增的追加
             const mergeArrays = (cloudArr, localArr, dedupKeys) => {
@@ -2726,36 +2741,36 @@
                 const results = [];
                 try {
                     // 1. 客户数据：获取云端 → 合并本地 → 上传
-                    const cloudCust = await jsonbinGet(JSONBIN_CONFIG.bins.customers);
+                    const cloudCust = await cosGet('customers');
                     const mergedCust = cloudCust ? mergeCustomers(cloudCust, allData.value) : allData.value;
-                    const custOk = await jsonbinPut(JSONBIN_CONFIG.bins.customers, mergedCust);
+                    const custOk = await cosPut('customers', mergedCust);
                     results.push(custOk ? '客户数据' : null);
 
                     // 2. 会话记录：获取云端 → 合并(去重) → 上传
-                    const cloudRecs = await jsonbinGet(JSONBIN_CONFIG.bins.records);
+                    const cloudRecs = await cosGet('records');
                     const mergedRecs = mergeArrays(cloudRecs, records.value, ['提交时间', '客户']);
-                    const recsOk = await jsonbinPut(JSONBIN_CONFIG.bins.records, mergedRecs);
+                    const recsOk = await cosPut('records', mergedRecs);
                     if (recsOk) { records.value = mergedRecs; saveRecords(); }
                     results.push(recsOk ? '会话记录' : null);
 
                     // 3. 配置记录
-                    const cloudCfgs = await jsonbinGet(JSONBIN_CONFIG.bins.configs);
+                    const cloudCfgs = await cosGet('configs');
                     const mergedCfgs = mergeArrays(cloudCfgs, configs.value, ['日期', '客户']);
-                    const cfgsOk = await jsonbinPut(JSONBIN_CONFIG.bins.configs, mergedCfgs);
+                    const cfgsOk = await cosPut('configs', mergedCfgs);
                     if (cfgsOk) { configs.value = mergedCfgs; saveConfigs(); }
                     results.push(cfgsOk ? '配置记录' : null);
 
                     // 4. 会议记录
-                    const cloudMtgs = await jsonbinGet(JSONBIN_CONFIG.bins.meetings);
+                    const cloudMtgs = await cosGet('meetings');
                     const mergedMtgs = mergeArrays(cloudMtgs, meetings.value, ['日期', '会议主题']);
-                    const mtgsOk = await jsonbinPut(JSONBIN_CONFIG.bins.meetings, mergedMtgs);
+                    const mtgsOk = await cosPut('meetings', mergedMtgs);
                     if (mtgsOk) { meetings.value = mergedMtgs; saveMeetings(); }
                     results.push(mtgsOk ? '会议记录' : null);
 
                     // 5. 周报
-                    const cloudWr = await jsonbinGet(JSONBIN_CONFIG.bins.weeklyReports);
+                    const cloudWr = await cosGet('weeklyReports');
                     const mergedWr = mergeArrays(cloudWr, weeklyReports.value, ['提交时间', '提交人']);
-                    const wrOk = await jsonbinPut(JSONBIN_CONFIG.bins.weeklyReports, mergedWr);
+                    const wrOk = await cosPut('weeklyReports', mergedWr);
                     if (wrOk) { weeklyReports.value = mergedWr; localStorage.setItem('weeklyReports', JSON.stringify(weeklyReports.value)); }
                     results.push(wrOk ? '周报' : null);
 
@@ -2789,7 +2804,7 @@
                 const startTime = Date.now();
                 try {
                     // 1. 客户数据：云端合并到本地
-                    const cloudCustomers = await jsonbinGet(JSONBIN_CONFIG.bins.customers);
+                    const cloudCustomers = await cosGet('customers');
                     if (cloudCustomers) {
                         const merged = mergeCustomers(cloudCustomers, allData.value);
                         Object.assign(allData.value, merged);
@@ -2800,10 +2815,10 @@
                     }
                     
                     // 2. 会话记录：云端+本地合并
-                    const cloudRecords = await jsonbinGet(JSONBIN_CONFIG.bins.records);
+                    const cloudRecords = await cosGet('records');
                     if (cloudRecords && Array.isArray(cloudRecords)) {
                         const mergedRecords = mergeArrays(cloudRecords, records.value, ['提交时间', '客户']);
-                        await jsonbinPut(JSONBIN_CONFIG.bins.records, mergedRecords);
+                        await cosPut('records', mergedRecords);
                         records.value = mergedRecords;
                         saveRecords();
                         results.push('会话记录');
@@ -2812,10 +2827,10 @@
                     }
                     
                     // 3. 配置记录
-                    const cloudConfigs = await jsonbinGet(JSONBIN_CONFIG.bins.configs);
+                    const cloudConfigs = await cosGet('configs');
                     if (cloudConfigs && Array.isArray(cloudConfigs)) {
                         const mergedConfigs = mergeArrays(cloudConfigs, configs.value, ['日期', '客户']);
-                        await jsonbinPut(JSONBIN_CONFIG.bins.configs, mergedConfigs);
+                        await cosPut('configs', mergedConfigs);
                         configs.value = mergedConfigs;
                         saveConfigs();
                         results.push('配置记录');
@@ -2824,10 +2839,10 @@
                     }
                     
                     // 4. 会议记录
-                    const cloudMeetings = await jsonbinGet(JSONBIN_CONFIG.bins.meetings);
+                    const cloudMeetings = await cosGet('meetings');
                     if (cloudMeetings && Array.isArray(cloudMeetings)) {
                         const mergedMeetings = mergeArrays(cloudMeetings, meetings.value, ['日期', '会议主题']);
-                        await jsonbinPut(JSONBIN_CONFIG.bins.meetings, mergedMeetings);
+                        await cosPut('meetings', mergedMeetings);
                         meetings.value = mergedMeetings;
                         saveMeetings();
                         results.push('会议记录');
@@ -2856,7 +2871,7 @@
             // ===== 健康分看板方法 =====
             const loadHealthScores = async () => {
                 try {
-                    const data = await jsonbinGet(JSONBIN_CONFIG.bins.healthScores);
+                    const data = await cosGet('healthScores');
                     if (data && data.snapshots && data.snapshots.length > 0) {
                         const latest = data.snapshots[data.snapshots.length - 1];
                         const rawData = latest.data || [];
@@ -2895,7 +2910,7 @@
                     chartDom.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted)">暂无数据，请先通过脚本同步健康分数据</div>';
                     return;
                 }
-                const data = await jsonbinGet(JSONBIN_CONFIG.bins.healthScores);
+                const data = await cosGet('healthScores');
                 if (!data || !data.snapshots || data.snapshots.length === 0) return;
                 const weeks = parseInt(healthTrendRange.value);
                 const snapshots = data.snapshots.slice(-weeks);
@@ -8432,7 +8447,7 @@
                     }
                     saveRecords();
                     // 自动同步到云端
-                    const ok = await jsonbinPut(JSONBIN_CONFIG.bins.records, records.value);
+                    const ok = await cosPut('records', records.value);
                     if (!ok) showToast('⚠️ 云端同步失败，请点击「立即同步」手动同步', 'warning');
                 } else if (hasConfigSource) {
                     // 配置记录
@@ -8444,7 +8459,7 @@
                     }
                     saveConfigs();
                     // 自动同步到云端
-                    const ok2 = await jsonbinPut(JSONBIN_CONFIG.bins.configs, configs.value);
+                    const ok2 = await cosPut('configs', configs.value);
                     if (!ok2) showToast('⚠️ 云端同步失败，请点击「立即同步」手动同步', 'warning');
                 } else if (hasPhoneMeeting) {
                     // 会议记录
@@ -8456,7 +8471,7 @@
                     }
                     saveMeetings();
                     // 自动同步到云端
-                    const ok3 = await jsonbinPut(JSONBIN_CONFIG.bins.meetings, meetings.value);
+                    const ok3 = await cosPut('meetings', meetings.value);
                     if (!ok3) showToast('⚠️ 云端同步失败，请点击「立即同步」手动同步', 'warning');
                 } else {
                     // 客户数据
@@ -8468,7 +8483,7 @@
                     }
                     saveToStorage();
                     // 自动同步到云端
-                    const ok4 = await jsonbinPut(JSONBIN_CONFIG.bins.customers, allData.value);
+                    const ok4 = await cosPut('customers', allData.value);
                     if (!ok4) showToast('⚠️ 云端同步失败，请点击「立即同步」手动同步', 'warning');
                 }
                 editVisible.value = false;
@@ -8483,22 +8498,22 @@
                     tableData.value.splice(ridx, 1);
                     saveToStorage();
                     // 自动同步到云端
-                    await jsonbinPut(JSONBIN_CONFIG.bins.customers, allData.value);
+                    await cosPut('customers', allData.value);
                 } else if (deleteType.value === 'record') {
                     records.value.splice(deleteIndex.value, 1);
                     saveRecords();
                     // 自动同步到云端
-                    await jsonbinPut(JSONBIN_CONFIG.bins.records, records.value);
+                    await cosPut('records', records.value);
                 } else if (deleteType.value === 'config') {
                     configs.value.splice(deleteIndex.value, 1);
                     saveConfigs();
                     // 自动同步到云端
-                    await jsonbinPut(JSONBIN_CONFIG.bins.configs, configs.value);
+                    await cosPut('configs', configs.value);
                 } else if (deleteType.value === 'meeting') {
                     meetings.value.splice(deleteIndex.value, 1);
                     saveMeetings();
                     // 自动同步到云端
-                    await jsonbinPut(JSONBIN_CONFIG.bins.meetings, meetings.value);
+                    await cosPut('meetings', meetings.value);
                 }
                 deleteVisible.value = false;
                 showToast('删除成功');
