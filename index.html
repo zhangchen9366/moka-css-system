@@ -1534,8 +1534,8 @@
                         <h2>📈 数据看板</h2>
                         <div>
                             <span v-if="lastSyncTime" style="font-size:12px;color:#909399;margin-right:12px">上次同步: {{lastSyncTime}}</span>
-                            <button class="btn btn-default" @click="loadAllFromCloud" :disabled="isSyncing" style="margin-right:8px">☁️ 从云端加载</button>
-                            <button class="btn btn-primary" @click="syncAllToCloud" :disabled="isSyncing">{{isSyncing?'同步中...':'☁️ 立即同步'}}</button>
+                            <button class="btn btn-default" @click="loadAllFromCloud" :disabled="isSyncing" style="margin-right:8px" title="从云端拉取并合并数据，不会覆盖本地">☁️ 拉取合并</button>
+                            <button class="btn btn-primary" @click="syncAllToCloud" :disabled="isSyncing" title="将本地数据与云端合并，不会丢失任何人的数据">{{isSyncing?'同步中...':'☁️ 合并上传'}}</button>
                             <button class="btn btn-default" @click="showImportModal=true" style="margin-left:8px">📥 导入JSON</button>
                             <button class="btn btn-default" @click="exportAll">📤 导出Excel</button>
                             <button class="btn btn-default" @click="exportAllJSON" style="margin-left:8px">💾 导出JSON</button>
@@ -2680,86 +2680,160 @@
                 }
             };
             
-            // 同步所有数据到云端
+            // 合并两个数组（按去重键），合并规则：云端为主，本地新增的追加
+            const mergeArrays = (cloudArr, localArr, dedupKeys) => {
+                if (!Array.isArray(cloudArr)) return localArr || [];
+                if (!Array.isArray(localArr)) return cloudArr;
+                const merged = [...cloudArr];
+                for (const item of localArr) {
+                    const exists = cloudArr.some(c => dedupKeys.every(k => c[k] === item[k]));
+                    if (!exists) merged.push(item);
+                }
+                return merged;
+            };
+
+            // 合并客户数据（两级结构：类别 → 数组）
+            const mergeCustomers = (cloud, local) => {
+                const result = { ...cloud };
+                for (const [cat, localItems] of Object.entries(local || {})) {
+                    if (!Array.isArray(localItems)) continue;
+                    if (!result[cat]) { result[cat] = localItems; continue; }
+                    const cloudItems = result[cat] || [];
+                    const merged = [...cloudItems];
+                    for (const item of localItems) {
+                        const exists = cloudItems.some(c => c['字段1'] === item['字段1']);
+                        if (!exists) merged.push(item);
+                    }
+                    result[cat] = merged;
+                }
+                return result;
+            };
+
+            // 同步所有数据到云端（合并模式，不会覆盖云端已有数据）
             const syncAllToCloud = async () => {
                 isSyncing.value = true;
                 syncError.value = '';
+                const results = [];
                 try {
-                    // 同步客户数据
-                    const customerData = { ...allData.value };
-                    await jsonbinPut(JSONBIN_CONFIG.bins.customers, customerData);
-                    
-                    // 同步会话记录
-                    await jsonbinPut(JSONBIN_CONFIG.bins.records, records.value);
-                    
-                    // 同步配置记录
-                    await jsonbinPut(JSONBIN_CONFIG.bins.configs, configs.value);
-                    
-                    // 同步会议记录
-                    await jsonbinPut(JSONBIN_CONFIG.bins.meetings, meetings.value);
-                    
-                    // 同步周报
-                    await jsonbinPut(JSONBIN_CONFIG.bins.weeklyReports, weeklyReports.value);
+                    // 1. 客户数据：获取云端 → 合并本地 → 上传
+                    const cloudCust = await jsonbinGet(JSONBIN_CONFIG.bins.customers);
+                    const mergedCust = cloudCust ? mergeCustomers(cloudCust, allData.value) : allData.value;
+                    const custOk = await jsonbinPut(JSONBIN_CONFIG.bins.customers, mergedCust);
+                    results.push(custOk ? '客户数据' : null);
+
+                    // 2. 会话记录：获取云端 → 合并(去重) → 上传
+                    const cloudRecs = await jsonbinGet(JSONBIN_CONFIG.bins.records);
+                    const mergedRecs = mergeArrays(cloudRecs, records.value, ['提交时间', '客户']);
+                    const recsOk = await jsonbinPut(JSONBIN_CONFIG.bins.records, mergedRecs);
+                    if (recsOk) { records.value = mergedRecs; saveRecords(); }
+                    results.push(recsOk ? '会话记录' : null);
+
+                    // 3. 配置记录
+                    const cloudCfgs = await jsonbinGet(JSONBIN_CONFIG.bins.configs);
+                    const mergedCfgs = mergeArrays(cloudCfgs, configs.value, ['日期', '客户']);
+                    const cfgsOk = await jsonbinPut(JSONBIN_CONFIG.bins.configs, mergedCfgs);
+                    if (cfgsOk) { configs.value = mergedCfgs; saveConfigs(); }
+                    results.push(cfgsOk ? '配置记录' : null);
+
+                    // 4. 会议记录
+                    const cloudMtgs = await jsonbinGet(JSONBIN_CONFIG.bins.meetings);
+                    const mergedMtgs = mergeArrays(cloudMtgs, meetings.value, ['日期', '会议主题']);
+                    const mtgsOk = await jsonbinPut(JSONBIN_CONFIG.bins.meetings, mergedMtgs);
+                    if (mtgsOk) { meetings.value = mergedMtgs; saveMeetings(); }
+                    results.push(mtgsOk ? '会议记录' : null);
+
+                    // 5. 周报
+                    const cloudWr = await jsonbinGet(JSONBIN_CONFIG.bins.weeklyReports);
+                    const mergedWr = mergeArrays(cloudWr, weeklyReports.value, ['提交时间', '提交人']);
+                    const wrOk = await jsonbinPut(JSONBIN_CONFIG.bins.weeklyReports, mergedWr);
+                    if (wrOk) { weeklyReports.value = mergedWr; localStorage.setItem('weeklyReports', JSON.stringify(weeklyReports.value)); }
+                    results.push(wrOk ? '周报' : null);
+
+                    const successItems = results.filter(Boolean);
+                    const failCount = results.length - successItems.length;
                     
                     const now = new Date().toLocaleString('zh-CN');
                     lastSyncTime.value = now;
                     localStorage.setItem('lastSyncTime', now);
-                    showToast('全部数据已同步到云端', 'success');
+                    
+                    if (failCount === 0) {
+                        showToast(`合并同步成功 (${successItems.join('、')})`, 'success');
+                    } else if (successItems.length > 0) {
+                        showToast(`部分成功: ${successItems.join('、')}，${failCount}项失败`, 'warning');
+                    } else {
+                        showToast('同步失败，请稍后重试', 'error');
+                    }
                 } catch (error) {
                     syncError.value = error.message;
-                    showToast('同步失败: ' + error.message, 'error');
+                    showToast('同步异常: ' + error.message, 'error');
                 } finally {
                     isSyncing.value = false;
                 }
             };
             
-            // 从云端加载所有数据
+            // 从云端加载所有数据（合并模式，不会覆盖本地数据）
             const loadAllFromCloud = async () => {
+                const results = [];
                 try {
-                    // 同步客户数据
+                    // 1. 客户数据：云端合并到本地
                     const cloudCustomers = await jsonbinGet(JSONBIN_CONFIG.bins.customers);
                     if (cloudCustomers) {
-                        Object.assign(allData.value, cloudCustomers);
+                        const merged = mergeCustomers(cloudCustomers, allData.value);
+                        Object.assign(allData.value, merged);
                         saveToStorage();
+                        results.push('客户数据');
+                    } else {
+                        console.warn('⚠️ 客户数据加载失败（云端无响应）');
                     }
                     
-                    // 先将会话记录同步到云端（合并）
+                    // 2. 会话记录：云端+本地合并
                     const cloudRecords = await jsonbinGet(JSONBIN_CONFIG.bins.records);
-                    const mergedRecords = cloudRecords && Array.isArray(cloudRecords) ? 
-                        [...cloudRecords, ...records.value.filter(r => 
-                            !cloudRecords.some(c => c['提交时间'] === r['提交时间'] && c['客户'] === r['客户'])
-                        )] : records.value;
-                    await jsonbinPut(JSONBIN_CONFIG.bins.records, mergedRecords);
-                    records.value = mergedRecords;
-                    saveRecords();
+                    if (cloudRecords && Array.isArray(cloudRecords)) {
+                        const mergedRecords = mergeArrays(cloudRecords, records.value, ['提交时间', '客户']);
+                        await jsonbinPut(JSONBIN_CONFIG.bins.records, mergedRecords);
+                        records.value = mergedRecords;
+                        saveRecords();
+                        results.push('会话记录');
+                    } else {
+                        console.warn('⚠️ 会话记录加载失败（云端无响应）');
+                    }
                     
-                    // 同步配置记录
+                    // 3. 配置记录
                     const cloudConfigs = await jsonbinGet(JSONBIN_CONFIG.bins.configs);
-                    const mergedConfigs = cloudConfigs && Array.isArray(cloudConfigs) ? 
-                        [...cloudConfigs, ...configs.value.filter(c => 
-                            !cloudConfigs.some(cc => cc['日期'] === c['日期'] && cc['客户'] === c['客户'])
-                        )] : configs.value;
-                    await jsonbinPut(JSONBIN_CONFIG.bins.configs, mergedConfigs);
-                    configs.value = mergedConfigs;
-                    saveConfigs();
+                    if (cloudConfigs && Array.isArray(cloudConfigs)) {
+                        const mergedConfigs = mergeArrays(cloudConfigs, configs.value, ['日期', '客户']);
+                        await jsonbinPut(JSONBIN_CONFIG.bins.configs, mergedConfigs);
+                        configs.value = mergedConfigs;
+                        saveConfigs();
+                        results.push('配置记录');
+                    } else {
+                        console.warn('⚠️ 配置记录加载失败（云端无响应）');
+                    }
                     
-                    // 同步会议记录
+                    // 4. 会议记录
                     const cloudMeetings = await jsonbinGet(JSONBIN_CONFIG.bins.meetings);
-                    const mergedMeetings = cloudMeetings && Array.isArray(cloudMeetings) ? 
-                        [...cloudMeetings, ...meetings.value.filter(m => 
-                            !cloudMeetings.some(cm => cm['日期'] === m['日期'] && cm['会议主题'] === m['会议主题'])
-                        )] : meetings.value;
-                    await jsonbinPut(JSONBIN_CONFIG.bins.meetings, mergedMeetings);
-                    meetings.value = mergedMeetings;
-                    saveMeetings();
+                    if (cloudMeetings && Array.isArray(cloudMeetings)) {
+                        const mergedMeetings = mergeArrays(cloudMeetings, meetings.value, ['日期', '会议主题']);
+                        await jsonbinPut(JSONBIN_CONFIG.bins.meetings, mergedMeetings);
+                        meetings.value = mergedMeetings;
+                        saveMeetings();
+                        results.push('会议记录');
+                    } else {
+                        console.warn('⚠️ 会议记录加载失败（云端无响应）');
+                    }
                     
                     const now = new Date().toLocaleString('zh-CN');
                     lastSyncTime.value = now;
                     localStorage.setItem('lastSyncTime', now);
-                    showToast('已从云端加载并合并最新数据', 'success');
+                    
+                    if (results.length > 0) {
+                        showToast(`✅ 从云端加载成功 (${results.join('、')})，记录数已更新`, 'success');
+                    } else {
+                        showToast('⚠️ 云端连接失败，请按F12查看Console错误，稍后重试', 'warning');
+                    }
                 } catch (error) {
                     console.error('从云端加载数据失败:', error);
-                    showToast('加载失败: ' + error.message, 'error');
+                    showToast('加载异常: ' + error.message, 'error');
                 }
             };
             
