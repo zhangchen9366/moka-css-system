@@ -1,12 +1,20 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
+const https = require('https');
 
 const COOKIE_FILE = path.join(__dirname, '.cookies.json');
-const JSONBIN_API = 'https://api.jsonbin.io/v3';
-const JSONBIN_KEY = '$2a$10$94MoVDNRO0bakGDYcTsN3.BEiTefnDwwkXGndi1VuAZqxhKHhggby';
-const HEALTH_BIN_ID = '6a089ef2adc21f119aad2ceb';
 const CRM_URL = 'https://crm.xiaoshouyi.com';
+
+// COS 配置（从环境变量读取，部署时由 .cos.conf 注入）
+const COS_CONFIG = {
+    SecretId: process.env.COS_SECRET_ID || '',
+    SecretKey: process.env.COS_SECRET_KEY || '',
+    Bucket: process.env.COS_BUCKET || 'moka-css-system-1428834627',
+    Region: process.env.COS_REGION || 'ap-chengdu',
+};
+const HEALTH_FILE_KEY = 'sync/health-scores.json';
 
 const TARGET_CSS = ['张辰','宋明亮','娄洋','王俊朋','曾瑞锋','徐琪','李晓丽','金梅','王亚淼','周旺'];
 const DIAG_DIR = path.join(__dirname, 'diag');
@@ -19,20 +27,58 @@ function getWeekKey() {
     return `${now.getFullYear()}-W${String(Math.ceil((now - start) / 604800000 + 1)).padStart(2,'0')}`;
 }
 
-async function loadBin() {
-    const res = await fetch(`${JSONBIN_API}/b/${HEALTH_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
-    if (!res.ok) throw new Error(`读取Bin失败: ${res.status}`);
-    return await res.json();
+// ========== COS REST API 封装 ==========
+
+function cosSign(method, key, headers) {
+    const host = `${COS_CONFIG.Bucket}.cos.${COS_CONFIG.Region}.myqcloud.com`;
+    const pathname = `/${key}`;
+    const signTime = `${Math.floor(Date.now()/1000)-60};${Math.floor(Date.now()/1000)+3600}`;
+    const httpString = `${method.toLowerCase()}\n${pathname}\n\nhost=${host}\n`;
+    const sha1Http = crypto.createHash('sha1').update(httpString).digest('hex');
+    const stringToSign = `sha1\n${signTime}\n${sha1Http}\n`;
+    const signKey = crypto.createHmac('sha1', COS_CONFIG.SecretKey).update(signTime).digest('hex');
+    const signature = crypto.createHmac('sha1', signKey).update(stringToSign).digest('hex');
+    const auth = `q-sign-algorithm=sha1&q-ak=${COS_CONFIG.SecretId}&q-sign-time=${signTime}&q-key-time=${signTime}&q-header-list=host&q-url-param-list=&q-signature=${signature}`;
+    return auth;
 }
 
-async function saveBin(data) {
-    const res = await fetch(`${JSONBIN_API}/b/${HEALTH_BIN_ID}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
-        body: JSON.stringify(data)
+function cosRequest(method, key, body) {
+    return new Promise((resolve, reject) => {
+        const host = `${COS_CONFIG.Bucket}.cos.${COS_CONFIG.Region}.myqcloud.com`;
+        const headers = { 'Host': host, 'Content-Type': 'application/json' };
+        if (body) headers['Content-Length'] = Buffer.byteLength(body);
+        headers['Authorization'] = cosSign(method, key, headers);
+
+        const req = https.request({
+            hostname: host, path: `/${key}`, method, headers,
+            timeout: 30000
+        }, res => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                if (res.statusCode >= 200 && res.statusCode < 300) {
+                    try { resolve(data ? JSON.parse(data) : null); }
+                    catch(e) { resolve(null); }
+                } else {
+                    reject(new Error(`COS ${method} ${key} -> ${res.statusCode}: ${data.slice(0,200)}`));
+                }
+            });
+        });
+        req.on('error', reject);
+        req.on('timeout', () => { req.destroy(); reject(new Error('请求超时')); });
+        if (body) req.write(body);
+        req.end();
     });
-    if (!res.ok) throw new Error(`写入Bin失败: ${res.status}`);
-    return true;
+}
+
+async function cosGet(key) {
+    try { return await cosRequest('GET', key); }
+    catch(e) { console.error(`   ⚠️ COS读取失败: ${e.message}`); return null; }
+}
+
+async function cosPut(key, data) {
+    try { await cosRequest('PUT', key, JSON.stringify(data)); return true; }
+    catch(e) { console.error(`   ⚠️ COS写入失败: ${e.message}`); return false; }
 }
 
 function saveDiag(filename, content) {
@@ -396,20 +442,31 @@ async function main() {
             console.log('\n前5条:');
             filtered.slice(0, 5).forEach(d => console.log(`   ${d.companyName} | PP:${d.ppCss} | ATS:${d.atsCss} | 分:${d.healthScore}`));
 
-            const finalData = filtered.map(d => ({ customerName: d.companyName.trim(), healthScore: d.healthScore, css: ((d.atsCss || d.ppCss || '') + '').trim() }));
-            const snapshot = { week: getWeekKey(), timestamp: new Date().toISOString(), threshold: 4, data: finalData };
-            try {
-                const bin = await loadBin();
-                bin.record.snapshots = bin.record.snapshots || [];
-                bin.record.snapshots.push(snapshot);
-                if (bin.record.snapshots.length > 12) bin.record.snapshots = bin.record.snapshots.slice(-12);
-                await saveBin(bin.record);
-                console.log('\n✅ JSONBin写入成功！周次: ' + snapshot.week);
+            const finalData = filtered.map(d => ({ customerName: d.companyName.trim(), healthScore: d.healthScore, cssOwner: ((d.atsCss || d.ppCss || '') + '').trim() }));
+            const snapshot = { week: getWeekKey(), timestamp: new Date().toISOString().slice(0, 10), data: finalData };
+
+            // 从COS拉取现有快照 → 追加新快照 → 写回COS
+            let existing = await cosGet(HEALTH_FILE_KEY);
+            if (!existing || !existing.snapshots) existing = { snapshots: [] };
+            // 检查本周是否已有快照，有则替换
+            const idx = existing.snapshots.findIndex(s => s.week === snapshot.week);
+            if (idx >= 0) {
+                existing.snapshots[idx] = snapshot;
+                console.log(`   📝 替换已有快照 ${snapshot.week}`);
+            } else {
+                existing.snapshots.push(snapshot);
+                console.log(`   ➕ 新增快照 ${snapshot.week}`);
+            }
+            if (existing.snapshots.length > 12) existing.snapshots = existing.snapshots.slice(-12);
+
+            const ok = await cosPut(HEALTH_FILE_KEY, existing);
+            if (ok) {
+                console.log('\n✅ COS写入成功！周次: ' + snapshot.week);
                 console.log('   → 刷新网页健康分看板即可查看');
-            } catch (err) {
-                console.error('❌ JSONBin失败:', err.message);
-                fs.writeFileSync(path.join(DIAG_DIR, `health-${getWeekKey()}.json`), JSON.stringify(snapshot, null, 2));
-                console.log('   💾 已保存到本地文件');
+            } else {
+                console.error('❌ COS写入失败');
+                fs.writeFileSync(path.join(DIAG_DIR, `health-${snapshot.week}.json`), JSON.stringify(snapshot, null, 2));
+                console.log('   💾 已保存到本地文件 ' + path.join(DIAG_DIR, `health-${snapshot.week}.json`));
             }
         } else {
             console.log('\n⚠️ 过滤后0条。显示前10条原始记录:');

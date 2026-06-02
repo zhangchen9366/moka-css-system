@@ -1,0 +1,138 @@
+[
+  {
+    "companyName": "浙江新吉奥控股集团有限公司",
+    "healthScore": 3.65,
+    "ppCss": "周端",
+    "atsCss": "王俊朋",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "浙江晶盛机电股份有限公司",
+    "healthScore": 5.96,
+    "ppCss": "崔玉阳",
+    "atsCss": "曾瑞锋",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "浙江果然控股集团有限公司",
+    "healthScore": 5.07,
+    "ppCss": "崔玉阳",
+    "atsCss": "曾瑞锋",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "浙江森马服饰股份有限公司",
+    "healthScore": 7.35,
+    "ppCss": "任放之",
+    "atsCss": "张辰",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "浙江欧凯智行车业股份有限公司",
+    "healthScore": 4.2,
+    "ppCss": "",
+    "atsCss": "张添顺",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "浙江正泰电器股份有限公司",
+    "healthScore": 8.94,
+    "ppCss": "张宇",
+    "atsCss": "彭博",
+    "owner": "系统",
+    "status": "已领取"
+  },
+  {
+    "companyName": "浙江海创运联网络科技有限公司",
+    "healthScore": 3.27,
+    "ppCss": "黄文鑫",
+    "atsCss": "黄文鑫",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "浙江海心智惠科技有限公司",
+    "healthScore": 6.99,
+    "ppCss": "",
+    "atsCss": "张添顺",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "浙江禾川科技股份有限公司",
+    "healthScore": 6.93,
+    "ppCss": "",
+    "atsCss": "许刚",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "浙江米奥兰特商务会展股份有限公司",
+    "healthScore": 3.2,
+    "ppCss": "",
+    "atsCss": "崔玉阳",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "浙江美丽谷电子商务有限公司",
+    "healthScore": 3.5,
+    "ppCss": "",
+    "atsCss": "许刚",
+    "owner": "系统",
+    "status": "已领取"
+  },
+  {
+    "companyName": "浙江蓝宸信息科技有限公司",
+    "healthScore": 5.58,
+    "ppCss": "",
+    "atsCss": "张添顺",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "浙江邦盛科技有限公司",
+    "healthScore": 4.28,
+    "ppCss": "许刚",
+    "atsCss": "彭博",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "海发宝诚融资租赁有限公司",
+    "healthScore": 4.8,
+    "ppCss": "张添顺",
+    "atsCss": "张辰",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "深信服科技股份有限公司",
+    "healthScore": 8.22,
+    "ppCss": "袁从卿",
+    "atsCss": "宋丽",
+    "owner": "叶其芳",
+    "status": "已签约"
+  },
+  {
+    "companyName": "深圳市客路网络科技有限公司",
+    "healthScore": 7.69,
+    "ppCss": "孙立铭",
+    "atsCss": "袁竹蕊",
+    "owner": "叶其芳",
+    "status": "已签约"
+  },
+  {
+    "companyName": "深圳市星源材质科技股份有限公司",
+    "healthScore": 6.84,
+    "ppCss": "袁从卿",
+    "atsCss": "邵源",
+    "owner": "刘广川",
+    "status": "已签约"
+  }
+]

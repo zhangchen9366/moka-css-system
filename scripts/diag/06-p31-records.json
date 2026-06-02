@@ -1,0 +1,138 @@
+[
+  {
+    "companyName": "苏州艾博生物科技有限公司",
+    "healthScore": 5.58,
+    "ppCss": "",
+    "atsCss": "李潇",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "苏州苏映视图像软件科技有限公司",
+    "healthScore": 3.84,
+    "ppCss": "金晓佳",
+    "atsCss": "金晓佳",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "苏州赢众餐饮管理有限责任公司",
+    "healthScore": 1.55,
+    "ppCss": "杨建林",
+    "atsCss": "张辰",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "英伟达半导体科技（上海）有限公司",
+    "healthScore": 2,
+    "ppCss": "",
+    "atsCss": "彭莉萍",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "荣庆物流供应链有限公司",
+    "healthScore": 5.45,
+    "ppCss": "王金",
+    "atsCss": "娄洋",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "荷美尔（中国）投资有限公司",
+    "healthScore": 5.35,
+    "ppCss": "张薇",
+    "atsCss": "王俊朋",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "葛兰素史克（中国）投资有限公司",
+    "healthScore": 4.35,
+    "ppCss": "黄凰",
+    "atsCss": "王俊朋",
+    "owner": "周端",
+    "status": "已签约"
+  },
+  {
+    "companyName": "蚂蚁科技集团股份有限公司",
+    "healthScore": 4.93,
+    "ppCss": "崔玉阳",
+    "atsCss": "宋明亮",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "蚂蚁金服（杭州）网络技术有限公司",
+    "healthScore": 7.8,
+    "ppCss": "崔玉阳",
+    "atsCss": "宋明亮",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "衣恋时装（上海）有限公司",
+    "healthScore": 1.7,
+    "ppCss": "岳昱江",
+    "atsCss": "曾瑞锋",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "西诺迪斯食品（上海）有限公司",
+    "healthScore": 2,
+    "ppCss": "",
+    "atsCss": "李潇",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "观澜网络（杭州）有限公司",
+    "healthScore": 5.34,
+    "ppCss": "崔玉阳",
+    "atsCss": "曾瑞锋",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "谦寻（杭州）文化传媒有限公司",
+    "healthScore": 2.1,
+    "ppCss": "",
+    "atsCss": "程燕青",
+    "owner": "系统",
+    "status": "已领取"
+  },
+  {
+    "companyName": "豪雅（上海）光学有限公司",
+    "healthScore": 4.9,
+    "ppCss": "许蕾",
+    "atsCss": "毛欢",
+    "owner": "周端",
+    "status": "已签约"
+  },
+  {
+    "companyName": "费斯托（中国）有限公司",
+    "healthScore": 4.31,
+    "ppCss": "杨红梅",
+    "atsCss": "何月文",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "赛业（苏州）生物科技有限公司",
+    "healthScore": 8.61,
+    "ppCss": "金晓佳",
+    "atsCss": "金晓佳",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  },
+  {
+    "companyName": "赞同科技股份有限公司",
+    "healthScore": 7.61,
+    "ppCss": "张鸳媛",
+    "atsCss": "娄洋",
+    "owner": "卢海鸣",
+    "status": "已签约"
+  }
+]

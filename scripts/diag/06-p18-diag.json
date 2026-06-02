@@ -1,0 +1,18 @@
+{
+  "allElements": 1265,
+  "leafElements": 226,
+  "scoresFound": 57,
+  "companiesFound": 85,
+  "sampleScores": [
+    "1.35",
+    "1.35",
+    "1.35",
+    "2.30",
+    "2.30"
+  ],
+  "sampleCompanies": [
+    "杭州拼吖信息科技有限公司",
+    "迪安诊断技术集团股份有限公司",
+    "汉堡王（中国）投资有限公司"
+  ]
+}
