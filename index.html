@@ -2164,14 +2164,14 @@
                                     <span :style="{marginLeft:'auto',fontSize:'11px',color:'#fff',background:s.color,padding:'2px 10px',borderRadius:'10px',fontWeight:'600'}">{{s.count}} 条</span>
                                 </div>
                                 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
-                                    <div v-for="item in s.items" :key="item.客户名称+item.负责CSM"
+                                    <div v-for="item in s.items" :key="item.客户名称+item[bizPersonField]"
                                          @click.stop="drillToSingleItem(item, s)"
                                          class="biz-item-card"
                                          style="cursor:pointer">
                                         <div style="font-size:12px;font-weight:600;color:var(--text-primary);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{item.客户名称}}</div>
                                         <div style="display:flex;align-items:center;gap:6px">
-                                            <span style="font-size:10px;background:var(--bg-hover);color:var(--text-muted);padding:2px 6px;border-radius:4px">{{item.负责CSM}}</span>
-                                            <span :style="{fontSize:'10px',padding:'2px 6px',borderRadius:'4px',background:s.color+'22',color:s.color,fontWeight:'500'}">{{item.推进类型}}</span>
+                                            <span style="font-size:10px;background:var(--bg-hover);color:var(--text-muted);padding:2px 6px;border-radius:4px">{{item[bizPersonField]}}</span>
+                                            <span :style="{fontSize:'10px',padding:'2px 6px',borderRadius:'4px',background:s.color+'22',color:s.color,fontWeight:'500'}">{{item[bizTypeField]}}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -6721,7 +6721,7 @@
                                     "客户名称": "移远",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "王金",
                                     "Back-Css": "娄洋"
                         },
@@ -6729,7 +6729,7 @@
                                     "客户名称": "特斯拉",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "黄凰",
                                     "Back-Css": "娄洋"
                         },
@@ -6737,7 +6737,7 @@
                                     "客户名称": "Advance Intelligence Group",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "申雪萍",
                                     "Back-Css": "王俊朋"
                         },
@@ -6745,7 +6745,7 @@
                                     "客户名称": "MYTALENT",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "肖雨卉",
                                     "Back-Css": "王俊朋"
                         },
@@ -6753,7 +6753,7 @@
                                     "客户名称": "tigermed",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "许刚",
                                     "Back-Css": "王俊朋"
                         },
@@ -6761,7 +6761,7 @@
                                     "客户名称": "阳光电源",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "杨建林",
                                     "Back-Css": "宋明亮"
                         },
@@ -6769,7 +6769,7 @@
                                     "客户名称": "OSL",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "周端",
                                     "Back-Css": "王俊朋"
                         },
@@ -6777,7 +6777,7 @@
                                     "客户名称": "Klook",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "周端",
                                     "Back-Css": "王俊朋"
                         },
@@ -6785,7 +6785,7 @@
                                     "客户名称": "Segway",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "周端",
                                     "Back-Css": "王俊朋"
                         },
@@ -6793,7 +6793,7 @@
                                     "客户名称": "Dyna.Ai",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "周端",
                                     "Back-Css": "王俊朋"
                         },
@@ -6801,7 +6801,7 @@
                                     "客户名称": "Mammotion Technology",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华南",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "袁从卿",
                                     "Back-Css": "田剑"
                         },
@@ -6809,7 +6809,7 @@
                                     "客户名称": "XtalPi Inc.",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华南",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "胡小玲",
                                     "Back-Css": "田剑"
                         },
@@ -6817,7 +6817,7 @@
                                     "客户名称": "FUNI.PTE.LTD.",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华南",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "袁从卿",
                                     "Back-Css": "田剑"
                         },
@@ -6825,7 +6825,7 @@
                                     "客户名称": "Sangfor Technologies",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华南",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "袁从卿",
                                     "Back-Css": "袁竹蕊"
                         },
@@ -6833,7 +6833,7 @@
                                     "客户名称": "SHOPLINE",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华南",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "许晖仪",
                                     "Back-Css": "邵源"
                         },
@@ -6841,7 +6841,7 @@
                                     "客户名称": "Twyford International（特福国际）",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华南",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "许晖仪",
                                     "Back-Css": "邵源"
                         },
@@ -6849,7 +6849,7 @@
                                     "客户名称": "KPAY MERCHANT SERVICE LIMITED",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华南",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "许晖仪",
                                     "Back-Css": "邵源"
                         },
@@ -6857,7 +6857,7 @@
                                     "客户名称": "Bigo",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华南",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "许晖仪",
                                     "Back-Css": "邵源"
                         },
@@ -6865,7 +6865,7 @@
                                     "客户名称": "SUNDA International",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华南",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "许晖仪",
                                     "Back-Css": "邵源"
                         },
@@ -6873,7 +6873,7 @@
                                     "客户名称": "KCareers",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华南",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "袁从卿",
                                     "Back-Css": "邵源"
                         },
@@ -6881,7 +6881,7 @@
                                     "客户名称": "广州余音信息技术有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华南",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "许晖仪",
                                     "Back-Css": "邵源"
                         },
@@ -6889,7 +6889,7 @@
                                     "客户名称": "鯤（國際）數字科技有限公司",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "SMB",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "许蕾",
                                     "Back-Css": "王俊朋"
                         },
@@ -6897,7 +6897,7 @@
                                     "客户名称": "OSL",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "周端",
                                     "Back-Css": "王俊朋"
                         },
@@ -6905,7 +6905,7 @@
                                     "客户名称": "Klook",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "周端",
                                     "Back-Css": "王俊朋"
                         },
@@ -6913,7 +6913,7 @@
                                     "客户名称": "Segway",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "周端",
                                     "Back-Css": "王俊朋"
                         },
@@ -6921,7 +6921,7 @@
                                     "客户名称": "Dyna.Ai",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "周端",
                                     "Back-Css": "王俊朋"
                         },
@@ -6929,7 +6929,7 @@
                                     "客户名称": "bitget",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "岳昱江",
                                     "Back-Css": "曾瑞锋"
                         },
@@ -6937,7 +6937,7 @@
                                     "客户名称": "hashkey",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "岳昱江",
                                     "Back-Css": "曾瑞锋"
                         },
@@ -6945,7 +6945,7 @@
                                     "客户名称": "Hopeful Technology Co., Ltd.",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华北",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "胡昕钺",
                                     "Back-Css": "王欣悦"
                         },
@@ -6953,7 +6953,7 @@
                                     "客户名称": "广汽国际（career.gac）",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华北",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "胡昕钺",
                                     "Back-Css": "杨爽"
                         },
@@ -6961,7 +6961,7 @@
                                     "客户名称": "web3X",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华北",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "胡昕钺",
                                     "Back-Css": "罗丹"
                         },
@@ -6969,7 +6969,7 @@
                                     "客户名称": "exabytestalent",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "周端",
                                     "Back-Css": "王俊朋"
                         },
@@ -6977,7 +6977,7 @@
                                     "客户名称": "Easy Parcel",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "周端",
                                     "Back-Css": "王俊朋"
                         },
@@ -6985,7 +6985,7 @@
                                     "客户名称": "Hytech",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "周端",
                                     "Back-Css": "王俊朋"
                         },
@@ -6993,7 +6993,7 @@
                                     "客户名称": "FundPark",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华南",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "孙立铭/付燕",
                                     "Back-Css": "宋丽"
                         },
@@ -7001,7 +7001,7 @@
                                     "客户名称": "深信服",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华南",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "袁从卿",
                                     "Back-Css": "宋丽"
                         },
@@ -7009,7 +7009,7 @@
                                     "客户名称": "Talent Acquisition",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华北",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "胡昕钺",
                                     "Back-Css": "李桂花"
                         },
@@ -7017,7 +7017,7 @@
                                     "客户名称": "XCMG（徐工）",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "周端",
                                     "Back-Css": "张辰"
                         },
@@ -7025,7 +7025,7 @@
                                     "客户名称": "traveloka",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "周端",
                                     "Back-Css": "王俊朋"
                         },
@@ -7033,7 +7033,7 @@
                                     "客户名称": "联合国全球领导力与ESG发展中心",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华北",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "胡昕钺",
                                     "Back-Css": "李盼盼"
                         },
@@ -7041,7 +7041,7 @@
                                     "客户名称": "连连国际版",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华东",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "崔玉阳",
                                     "Back-Css": "张辰"
                         },
@@ -7049,7 +7049,7 @@
                                     "客户名称": "phasescientific",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华南",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "孙立铭",
                                     "Back-Css": "袁竹蕊"
                         },
@@ -7057,7 +7057,7 @@
                                     "客户名称": "RD Technologies",
                                     "客户所属区域": "华东",
                                     "客户应归属区域": "华南",
-                                    "当前CSS": "晓丽",
+                                    "当前CSS": "李晓丽",
                                     "CSM": "孙立铭",
                                     "Back-Css": "袁竹蕊"
                         }
@@ -7072,7 +7072,7 @@
                         },
                         {
                                     "获取时间": "2026年02月",
-                                    "CSS": "晓丽、娄洋",
+                                    "CSS": "李晓丽、娄洋",
                                     "口碑类型": "口碑",
                                     "截图": "2-2-image.png",
                                     "备注": ""
@@ -7114,7 +7114,7 @@
                         },
                         {
                                     "获取时间": "2026年04月",
-                                    "CSS": "晓丽、徐琪、明亮",
+                                    "CSS": "李晓丽、徐琪、明亮",
                                     "口碑类型": "口碑",
                                     "截图": "8-8-image.png",
                                     "备注": ""
@@ -7187,7 +7187,7 @@
                         },
                         {
                                     "客户名称": "vocalbeats",
-                                    "负责CSM": "晓丽",
+                                    "负责CSM": "李晓丽",
                                     "推进类型": "功能推广",
                                     "备注": "客户对EVA感兴趣，已开通试用",
                                     "当前进展": "试用支持中",
@@ -7211,7 +7211,7 @@
                         },
                         {
                                     "客户名称": "国泰君安",
-                                    "负责CSM": "晓丽",
+                                    "负责CSM": "李晓丽",
                                     "推进类型": "商机推广",
                                     "备注": "多个用人经理筛选，未参与筛选的用人经理需要安排面试，推荐增购账号",
                                     "当前进展": "",
@@ -7331,7 +7331,7 @@
                         },
                         {
                                     "客户名称": "hashkey",
-                                    "负责CSM": "晓丽",
+                                    "负责CSM": "李晓丽",
                                     "推进类型": "功能推广",
                                     "备注": "给客户hashkey推荐了官网付费，待客户确认。",
                                     "当前进展": "待客户反馈",
@@ -7508,7 +7508,7 @@
                                     "客户名称": "徐工国际版",
                                     "支持时间": "2026年1月1号",
                                     "实施": "晓春",
-                                    "CSS": "晓丽"
+                                    "CSS": "李晓丽"
                         }
             ],
             "EVA激活情况跟踪": [
@@ -7592,6 +7592,31 @@
                         }
                     });
                 } catch(e) {}
+            }
+
+            // 数据迁移：统一 "晓丽" → "李晓丽"（仅对本地数据，不覆盖EMBEDDED_DATA）
+            const MIGRATE_DONE = localStorage.getItem('migrate_xiaoli_done');
+            if (!MIGRATE_DONE) {
+                let migrated = false;
+                Object.keys(allData.value).forEach(key => {
+                    if (MANAGED_DATASETS.includes(key)) return;
+                    const rows = allData.value[key];
+                    if (!Array.isArray(rows)) return;
+                    rows.forEach(row => {
+                        Object.keys(row).forEach(field => {
+                            const v = row[field];
+                            if (typeof v === 'string' && v.includes('晓丽') && !v.includes('李晓丽')) {
+                                row[field] = v.replace(/晓丽/g, '李晓丽');
+                                migrated = true;
+                            }
+                        });
+                    });
+                });
+                if (migrated) {
+                    localStorage.setItem('customerData', JSON.stringify(allData.value));
+                    console.log('✅ 数据迁移：晓丽 → 李晓丽');
+                }
+                localStorage.setItem('migrate_xiaoli_done', '1');
             }
             
             // 会话记录数据
@@ -8229,15 +8254,15 @@
                     d = d.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(s))); 
                 }
                 if (filterType.value && currentView.value === '商机推进情况') { 
-                    d = d.filter(r => r['推进类型'] === filterType.value); 
+                    d = d.filter(r => r[bizTypeField.value] === filterType.value); 
                 }
                 if (bizFilterPerson.value && currentView.value === '商机推进情况') {
-                    d = d.filter(r => r['负责CSM'] === bizFilterPerson.value);
+                    d = d.filter(r => r[bizPersonField.value] === bizFilterPerson.value);
                 }
                 if (bizFilterStageKeyword.value && currentView.value === '商机推进情况') {
                     const keyword = bizFilterStageKeyword.value;
                     d = d.filter(r => {
-                        const p = (r['当前进展'] || '').toLowerCase();
+                        const p = (r[bizProgressField.value] || '').toLowerCase();
                         if (keyword === '合同') return /合同/.test(p);
                         if (keyword === '已开通') return /已开通|已收取|完成/.test(p);
                         if (keyword === '试用') return /试用/.test(p);
@@ -8348,12 +8373,26 @@
 
             // ===== 商机统计计算属性 =====
             const bizData = computed(() => allData.value['商机推进情况'] || []);
+
+            // 智能字段检测：从实际数据中自动识别字段名（兼容不同数据源）
+            const detectBizField = (data, candidates) => {
+                if (!data || data.length === 0) return candidates[0];
+                const firstRow = data[0];
+                for (const c of candidates) {
+                    if (firstRow[c] !== undefined) return c;
+                }
+                return candidates[0];
+            };
+            const bizPersonField = computed(() => detectBizField(bizData.value, ['负责CSM', 'CSM', '负责人', '当前CSS']));
+            const bizProgressField = computed(() => detectBizField(bizData.value, ['当前进展', '进展', '阶段', '状态']));
+            const bizTypeField = computed(() => detectBizField(bizData.value, ['推进类型', '类型', '商机类型', '分类']));
             
             // 人员统计
             const bizPersonStats = computed(() => {
                 const map = {};
+                const field = bizPersonField.value;
                 bizData.value.forEach(item => {
-                    const name = item['负责CSM'] || '未知';
+                    const name = item[field] || '未知';
                     map[name] = (map[name] || 0) + 1;
                 });
                 return Object.entries(map).map(([name, count]) => ({name, count})).sort((a,b) => b.count - a.count);
@@ -8373,8 +8412,9 @@
             // 推进类型统计
             const bizTypeStats = computed(() => {
                 const map = {};
+                const field = bizTypeField.value;
                 bizData.value.forEach(item => {
-                    const t = item['推进类型'] || '未分类';
+                    const t = item[field] || '未分类';
                     map[t] = (map[t] || 0) + 1;
                 });
                 return Object.entries(map).map(([type, count]) => ({type, count})).sort((a,b) => b.count - a.count);
@@ -8384,9 +8424,11 @@
             const bizCsmStageMatrix = computed(() => {
                 const personSet = new Set();
                 const matrix = {};
+                const personField = bizPersonField.value;
+                const progressField = bizProgressField.value;
                 bizData.value.forEach(item => {
-                    const person = item['负责CSM'] || '未知';
-                    const progress = (item['当前进展'] || '').toLowerCase();
+                    const person = item[personField] || '未知';
+                    const progress = (item[progressField] || '').toLowerCase();
                     let stageKey = '其他';
                     const stageLabels = ['合同中','已开通/完成','试用支持中','CSM跟进中','评估中','等待决策','无预算/暂缓'];
                     const stageKeys = ['合同','已开通','试用','跟进','评估','决策','无预算'];
@@ -8434,7 +8476,7 @@
                 const items = {};
                 STAGE_CONFIG.forEach(s => { counts[s.key] = 0; items[s.key] = []; });
                 bizData.value.forEach(item => {
-                    const progress = (item['当前进展'] || '').toLowerCase();
+                    const progress = (item[bizProgressField.value] || '').toLowerCase();
                     let matched = false;
                     if (/合同/.test(progress)) { counts['合同']++; items['合同'].push(item); matched = true; }
                     else if (/已开通|已收取|完成/.test(progress)) { counts['已开通']++; items['已开通'].push(item); matched = true; }
@@ -9091,6 +9133,7 @@
                 // 图片预览
                 lightboxVisible, lightboxImage, openLightbox, closeLightbox, onLightboxOverlay,
                 // 商机统计
+                bizPersonField, bizTypeField, bizProgressField,
                 bizPersonStats, bizPersonStatsMax, barStyle, bizTypeStats, bizStageStats, bizStageSorted, bizStageSortedMax,
                 bizFilterPerson, drillToBizPerson, drillToBizPersonStage, clearBizPersonFilter, drillToBizType, getCsmCellBg, getCsmCellColor, getCsmCellFz,
                 bizFilterStageKeyword, drillToStage, clearBizStageFilter, drillToSingleItem, bizHighlightKey, bizCsmStageMatrix,
