@@ -1919,7 +1919,10 @@
                 <template v-else-if="currentView === '周报汇总'">
                     <div class="breadcrumb"><a @click="switchView('dashboard')">首页</a><span>/</span><span>周报汇总</span></div>
                     <div class="panel">
-                        <div class="panel-header"><span class="panel-title">📊 团队周报汇总</span></div>
+                        <div class="panel-header">
+                            <span class="panel-title">📊 团队周报汇总</span>
+                            <button class="btn btn-sm btn-primary" @click="loadWeekSummary(true)" :disabled="summaryLoading" style="margin-left:auto">{{summaryLoading ? '同步中...' : '☁️ 拉取最新'}}</button>
+                        </div>
                         <div class="panel-body">
                             <div class="week-selector-new">
                                 <label>📅 选择周次</label>
@@ -2186,7 +2189,8 @@
                             <span style="color:var(--text-secondary);font-size:13px">低分阈值：</span>
                             <input type="range" min="0" max="10" step="0.5" v-model.number="healthThreshold" @input="handleHealthThresholdChange" style="width:120px">
                             <span style="color:var(--warning);font-weight:600;min-width:40px">{{healthThreshold}}</span>
-                            <button class="btn btn-sm btn-primary" @click="loadHealthScores">🔄 刷新数据</button>
+                            <button class="btn btn-sm btn-primary" @click="loadHealthScores(false)" :disabled="healthLoading">{{healthLoading ? '加载中...' : '🔄 刷新数据'}}</button>
+                            <button class="btn btn-sm btn-default" @click="openHealthImport" style="margin-left:8px">📥 导入健康分</button>
                         </div>
                     </div>
                     <div class="stats-grid" style="margin-bottom:24px">
@@ -2221,7 +2225,7 @@
                                     <tr v-for="c in lowHealthCustomers" :key="c.customerName">
                                         <td style="font-weight:500">{{c.customerName}}</td>
                                         <td><span :style="{background: c.healthScore < healthThreshold ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)', color: c.healthScore < healthThreshold ? '#ef4444' : '#10b981', padding:'2px 8px', borderRadius:'4px', fontSize:'13px', fontWeight:'600'}">{{c.healthScore}}</span></td>
-                                        <td>{{c.css || '-'}}</td>
+                                        <td>{{c.cssOwner || '-'}}</td>
                                         <td><button class="btn btn-sm btn-primary" @click="openCRM(c.crmUrl)">🔗 打开CRM</button></td>
                                     </tr>
                                     <tr v-if="lowHealthCustomers.length === 0"><td colspan="4" style="text-align:center;color:var(--text-muted);padding:24px">暂无低分客户 🎉</td></tr>
@@ -2589,6 +2593,35 @@
                 <div class="modal-footer"><button class="btn btn-default" @click="showImportModal=false">关闭</button></div>
             </div>
         </div>
+
+        <!-- 健康分导入弹窗 -->
+        <div class="modal-overlay" v-if="showHealthImportModal" @click.self="showHealthImportModal=false">
+            <div class="modal" style="max-width:600px">
+                <div class="modal-header"><h3>💚 导入健康分数据</h3><button class="modal-close" @click="showHealthImportModal=false">×</button></div>
+                <div class="modal-body">
+                    <div v-if="healthImportError" style="margin-bottom:12px;padding:10px 14px;background:rgba(239,68,68,0.1);color:#ef4444;border-radius:6px;font-size:13px">{{healthImportError}}</div>
+                    <p style="margin-bottom:12px;color:var(--text-secondary);font-size:13px">
+                        粘贴健康分 JSON 数据，支持两种格式：
+                    </p>
+                    <div style="margin-bottom:12px;font-size:12px;color:var(--text-muted);line-height:1.8">
+                        <strong>格式一（完整快照）：</strong><br>
+                        <code style="background:var(--bg);padding:2px 6px;border-radius:3px">{"snapshots":[{"week":"2026-W22","timestamp":"2026-06-01","data":[{"customerName":"客户A","healthScore":6.5,"cssOwner":"张辰","crmUrl":"https://..."}]}]}</code>
+                        <br><br>
+                        <strong>格式二（纯数组，自动追加为本周快照）：</strong><br>
+                        <code style="background:var(--bg);padding:2px 6px;border-radius:3px">[{"customerName":"客户A","healthScore":6.5,"cssOwner":"张辰"}]</code>
+                    </div>
+                    <textarea v-model="healthImportText" placeholder="在此粘贴 JSON 数据..." style="width:100%;height:200px;background:var(--bg);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;padding:12px;font-family:monospace;font-size:13px;resize:vertical"></textarea>
+                    <p style="margin-top:8px;font-size:12px;color:var(--text-muted)">
+                        也支持上传文件：
+                        <input type="file" accept=".json,.csv" @change="handleHealthFileImport" style="margin-left:8px">
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-default" @click="showHealthImportModal=false">关闭</button>
+                    <button class="btn btn-primary" @click="doHealthImport" :disabled="!healthImportText.trim()">💾 保存到云端</button>
+                </div>
+            </div>
+        </div>
         
         <!-- 周报预览弹窗 -->
         <div class="modal-overlay" v-if="showReportModal" @click.self="showReportModal=false">
@@ -2698,6 +2731,10 @@
             const healthThreshold = ref(4);
             const showLowHealthDetail = ref(false);
             const healthTrendRange = ref('8');
+            const healthLoading = ref(false);
+            const showHealthImportModal = ref(false);
+            const healthImportText = ref('');
+            const healthImportError = ref('');
             const lowHealthCount = computed(() => healthScoresData.value.filter(c => c.healthScore < healthThreshold.value).length);
             const lowHealthPercentage = computed(() => {
                 if (healthScoresData.value.length === 0) return '0.0';
@@ -2869,13 +2906,13 @@
             
 
             // ===== 健康分看板方法 =====
-            const loadHealthScores = async () => {
+            const loadHealthScores = async (silent = false) => {
+                healthLoading.value = true;
                 try {
                     const data = await cosGet('healthScores');
                     if (data && data.snapshots && data.snapshots.length > 0) {
                         const latest = data.snapshots[data.snapshots.length - 1];
                         const rawData = latest.data || [];
-                        // 按客户名去重（同一客户保留分数最高的）
                         const dedupMap = new Map();
                         rawData.forEach(item => {
                             const name = item.customerName || item.companyName || '';
@@ -2886,13 +2923,98 @@
                         });
                         healthScoresData.value = Array.from(dedupMap.values());
                         console.log('健康分数据加载成功，原始', rawData.length, '条，去重后', healthScoresData.value.length, '条');
+                        if (!silent) showToast(`已加载 ${healthScoresData.value.length} 条健康分数据`, 'success');
                     } else {
                         healthScoresData.value = [];
+                        if (!silent) showToast('云端暂无健康分数据，请先导入', 'warning');
                     }
                 } catch (err) {
                     console.error('加载健康分数据失败:', err);
-                    showToast('健康分数据加载失败', 'error');
+                    healthScoresData.value = [];
+                    if (!silent) showToast('健康分数据加载失败', 'error');
+                } finally {
+                    healthLoading.value = false;
                 }
+            };
+
+            // 打开健康分导入弹窗
+            const openHealthImport = () => {
+                healthImportText.value = '';
+                healthImportError.value = '';
+                showHealthImportModal.value = true;
+            };
+
+            // 执行健康分导入
+            const doHealthImport = async () => {
+                const text = healthImportText.value.trim();
+                if (!text) return;
+                healthImportError.value = '';
+                let parsed;
+                try {
+                    parsed = JSON.parse(text);
+                } catch (e) {
+                    healthImportError.value = 'JSON 格式解析失败，请检查数据格式';
+                    return;
+                }
+
+                // 构建标准数据格式
+                let newData;
+                if (parsed.snapshots) {
+                    // 格式一：完整快照结构
+                    newData = parsed;
+                } else if (Array.isArray(parsed)) {
+                    // 格式二：纯数组，自动追加为本周快照
+                    const now = new Date();
+                    const weekNum = Math.ceil((now.getDate() + (now.getDay() === 0 ? 7 : now.getDay()) - 1) / 7);
+                    const yearStart = new Date(now.getFullYear(), 0, 1);
+                    const isoWeek = Math.ceil(((now - yearStart) / 86400000 + yearStart.getDay() + 1) / 7);
+                    newData = {
+                        snapshots: [{
+                            week: `${now.getFullYear()}-W${String(isoWeek).padStart(2,'0')}`,
+                            timestamp: now.toISOString().slice(0, 10),
+                            data: parsed
+                        }]
+                    };
+                } else {
+                    healthImportError.value = '数据格式不正确：需要 JSON 对象（含 snapshots）或 JSON 数组';
+                    return;
+                }
+
+                // 先拉取现有数据合并
+                let existingData = await cosGet('healthScores');
+                if (!existingData || !existingData.snapshots) {
+                    existingData = { snapshots: [] };
+                }
+                // 合并：追加新的快照
+                existingData.snapshots = existingData.snapshots.concat(newData.snapshots);
+
+                const ok = await cosPut('healthScores', existingData);
+                if (ok) {
+                    showToast('健康分数据已保存到云端', 'success');
+                    showHealthImportModal.value = false;
+                    healthImportText.value = '';
+                    await loadHealthScores(true);
+                    initHealthTrendChart();
+                } else {
+                    healthImportError.value = '保存到云端失败，请检查网络';
+                }
+            };
+
+            // 从文件导入健康分
+            const handleHealthFileImport = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const content = evt.target.result;
+                        healthImportText.value = content;
+                        healthImportError.value = '';
+                    } catch (err) {
+                        healthImportError.value = '文件读取失败';
+                    }
+                };
+                reader.readAsText(file);
             };
 
             const openCRM = (crmUrl) => {
@@ -2907,7 +3029,7 @@
                 const chartDom = document.getElementById('healthTrendChart');
                 if (!chartDom) return;
                 if (healthScoresData.value.length === 0) {
-                    chartDom.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted)">暂无数据，请先通过脚本同步健康分数据</div>';
+                    chartDom.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted)">暂无数据，请点击「📥 导入健康分」上传数据</div>';
                     return;
                 }
                 const data = await cosGet('healthScores');
@@ -7548,7 +7670,29 @@
                 });
             });
             
-            const loadWeekSummary = () => {
+            const summaryLoading = ref(false);
+
+            const loadWeekSummary = async (pullCloud = false) => {
+                if (pullCloud) {
+                    summaryLoading.value = true;
+                    try {
+                        const cloudWr = await cosGet('weeklyReports');
+                        if (cloudWr && Array.isArray(cloudWr)) {
+                            // 合并策略：以「week + 填写人」为唯一键，云端优先，本地新增追加
+                            const merged = mergeArrays(cloudWr, weeklyReports.value, ['week', '填写人']);
+                            weeklyReports.value = merged;
+                            localStorage.setItem('weeklyReports', JSON.stringify(merged));
+                            showToast(`已同步云端周报，共 ${merged.length} 条`, 'success');
+                        } else {
+                            showToast('云端暂无周报数据', 'warning');
+                        }
+                    } catch (err) {
+                        console.error('拉取云端周报失败:', err);
+                        showToast('拉取云端周报失败', 'error');
+                    } finally {
+                        summaryLoading.value = false;
+                    }
+                }
                 weekSummaryData.value = weeklyReports.value.filter(r => r.week === summaryWeek.value);
             };
             
@@ -8190,7 +8334,8 @@
                     customerSubTab.value = 'list';
                 }
                 if (v === '填写周报') { loadWeeklyReport(); }
-                if (v === '周报汇总') { loadWeekSummary(); }
+                if (v === '周报汇总') { loadWeekSummary(true); }
+                if (v === '健康分看板') { initHealthTrendChart(); }
             };
             
             // 从详情页返回
@@ -8888,9 +9033,11 @@
             const handleLightboxKey = (e) => {
                 if (e.key === 'Escape' && lightboxVisible.value) closeLightbox();
             };
-            onMounted(() => document.addEventListener('keydown', handleLightboxKey));
+            onMounted(() => {
+                document.addEventListener('keydown', handleLightboxKey);
+                loadHealthScores(true);
+            });
             onUnmounted(() => {
-                loadHealthScores();
                 document.removeEventListener('keydown', handleLightboxKey);
                 document.body.style.overflow = '';
             });
@@ -8903,7 +9050,7 @@
                 // 数据
                 allData, records, configs, meetings, weeklyReports,
                 // 周报汇总
-                weekSummaryData, summaryWeek, loadWeekSummary, weekGroupStats, TEAM_GROUPS,
+                weekSummaryData, summaryWeek, summaryLoading, loadWeekSummary, weekGroupStats, TEAM_GROUPS,
                 // 周报
                 weeklyForm, weeklySummary, currentWeek, summaryWeek, showReportModal, reportContent, historyFilter, filteredHistory, weeklyUnfilled,
                 importWeeklyData, getCurrentWeek, getWeekDateRange, loadWeeklyReport, saveWeeklyReport, addEvaItem, removeEvaItem, addHealthItem, removeHealthItem, previewWeeklyReport, viewWeeklyReport, generateWeeklyReport, copyReport, exportAllWeekly, generateTeamReport, formatDate, setCurrentWeek, setSummaryWeek,
@@ -8950,7 +9097,7 @@
                 // 筛选清除方法
                 clearDateFilter, clearConfigDateFilter, clearMeetingDateFilter,
                 // 健康分
-                healthScoresData, healthThreshold, showLowHealthDetail, healthTrendRange, lowHealthCount, lowHealthPercentage, lowHealthCustomers, initHealthTrendChart, loadHealthScores, openCRM, handleHealthThresholdChange
+                healthScoresData, healthThreshold, showLowHealthDetail, healthTrendRange, lowHealthCount, lowHealthPercentage, lowHealthCustomers, initHealthTrendChart, loadHealthScores, openCRM, handleHealthThresholdChange, healthLoading, showHealthImportModal, healthImportText, healthImportError, openHealthImport, doHealthImport, handleHealthFileImport
             };
 
         }
