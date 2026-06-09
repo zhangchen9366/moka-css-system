@@ -2816,7 +2816,7 @@
                     const cloudWr = await cosGet('weeklyReports');
                     const mergedWr = mergeArrays(cloudWr, weeklyReports.value, ['提交时间', '提交人']);
                     const wrOk = await cosPut('weeklyReports', mergedWr);
-                    if (wrOk) { weeklyReports.value = mergedWr; localStorage.setItem('weeklyReports', JSON.stringify(weeklyReports.value)); }
+                    if (wrOk) { weeklyReports.value = mergedWr; safeSetItem('weeklyReports', JSON.stringify(weeklyReports.value)); }
                     results.push(wrOk ? '周报' : null);
 
                     const successItems = results.filter(Boolean);
@@ -7621,10 +7621,10 @@
                     });
                 });
                 if (migrated) {
-                    localStorage.setItem('customerData', JSON.stringify(allData.value));
+                    try { localStorage.setItem('customerData', JSON.stringify(allData.value)); } catch(e) { console.warn('迁移数据写入localStorage失败(quota):', e.name); }
                     console.log('✅ 数据迁移：晓丽 → 李晓丽');
                 }
-                localStorage.setItem('migrate_xiaoli_done', '1');
+                try { localStorage.setItem('migrate_xiaoli_done', '1'); } catch(e) {}
             }
             
             // 会话记录数据
@@ -7714,7 +7714,7 @@
                             // 合并策略：以「week + 填写人」为唯一键，云端优先，本地新增追加
                             const merged = mergeArrays(cloudWr, weeklyReports.value, ['week', '填写人']);
                             weeklyReports.value = merged;
-                            localStorage.setItem('weeklyReports', JSON.stringify(merged));
+                            safeSetItem('weeklyReports', JSON.stringify(merged));
                             showToast(`已同步云端周报，共 ${merged.length} 条`, 'success');
                         } else {
                             showToast('云端暂无周报数据', 'warning');
@@ -8046,7 +8046,7 @@
                 const reportData = { ...weeklyForm.value, week: currentWeek.value, 填写人: currentUser.value.name, 更新时间: new Date().toISOString() };
                 if (idx >= 0) { weeklyReports.value[idx] = reportData; }
                 else { weeklyReports.value.push(reportData); }
-                localStorage.setItem('weeklyReports', JSON.stringify(weeklyReports.value));
+                safeSetItem('weeklyReports', JSON.stringify(weeklyReports.value));
                 showToast('周报已保存');
             };
             
@@ -8173,11 +8173,24 @@
             };
             
             // 数据持久化 - 受管理数据集已在初始化时合并处理，此处仅保留用户编辑数据
-            
-            const saveToStorage = () => { localStorage.setItem('customerData', JSON.stringify(allData.value)); };
-            const saveRecords = () => { localStorage.setItem('workRecords', JSON.stringify(records.value)); };
-            const saveConfigs = () => { localStorage.setItem('workConfigs', JSON.stringify(configs.value)); };
-            const saveMeetings = () => { localStorage.setItem('workMeetings', JSON.stringify(meetings.value)); };
+            // 安全写入 localStorage，自动处理 QuotaExceededError
+            const safeSetItem = (key, value) => {
+                try {
+                    localStorage.setItem(key, value);
+                } catch (e) {
+                    if (e && (e.name === 'QuotaExceededError' || e.code === 22 || (e.message && e.message.toLowerCase().includes('quota')))) {
+                        console.warn(`[localStorage] "${key}" 写入失败：存储空间已满，数据已同步到云端，本地缓存暂时跳过。`);
+                        // 不抛出异常，让调用方继续执行
+                    } else {
+                        throw e;
+                    }
+                }
+            };
+
+            const saveToStorage = () => { safeSetItem('customerData', JSON.stringify(allData.value)); };
+            const saveRecords = () => { safeSetItem('workRecords', JSON.stringify(records.value)); };
+            const saveConfigs = () => { safeSetItem('workConfigs', JSON.stringify(configs.value)); };
+            const saveMeetings = () => { safeSetItem('workMeetings', JSON.stringify(meetings.value)); };
             
             const getCount = (s) => (allData.value[s] || []).length;
             const tableData = computed(() => allData.value[currentView.value] || []);
