@@ -48,6 +48,7 @@ files = {
     'echarts.min.js': 'application/javascript',
     'xlsx.full.min.js': 'application/javascript',
     'cos-js-sdk-v5.min.js': 'application/javascript',
+    'lz-string.min.js': 'application/javascript',
 }
 
 for filename, content_type in files.items():

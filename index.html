@@ -2654,6 +2654,7 @@
     <script src="xlsx.full.min.js"></script>
     <script>window.COS_CREDENTIALS=JSON.parse(atob('eyJTZWNyZXRJZCI6IkFLSUR4d3FoV0Z5a0wwYXpRbnl2ZTlIUFhLRzZ4aklldUNKTSIsIlNlY3JldEtleSI6InhpRlpmWURkb3dUenBWMU5WUTlpNEVPYWVUM2F5OTdyIiwiQnVja2V0IjoibW9rYS1jc3Mtc3lzdGVtLTE0Mjg4MzQ2MjciLCJSZWdpb24iOiJhcC1jaGVuZ2R1In0='))</script>
     <script src="cos-js-sdk-v5.min.js"></script>
+    <script src="lz-string.min.js"></script>
     <script>
     const {createApp, ref, computed, onMounted, onUnmounted, nextTick} = Vue;
     createApp({
@@ -2779,14 +2780,46 @@
                 return result;
             };
 
-            // 安全写入 localStorage，自动处理 QuotaExceededError（必须定义在所有调用方之前）
+            // 压缩存储辅助函数（使用 lz-string 压缩，解决 localStorage 5MB 限额问题）
+            const COMPRESS_PREFIX = '__LZS__:';
+            const compressSetItem = (key, value) => {
+                try {
+                    const compressed = COMPRESS_PREFIX + LZString.compressToUTF16(value);
+                    localStorage.setItem(key, compressed);
+                } catch (e) {
+                    // 压缩后仍超限，尝试更激进的 Base64 压缩
+                    try {
+                        const compressed = COMPRESS_PREFIX + LZString.compressToBase64(value);
+                        localStorage.setItem(key, compressed);
+                    } catch (e2) {
+                        throw e2;
+                    }
+                }
+            };
+            const decompressGetItem = (key) => {
+                const raw = localStorage.getItem(key);
+                if (!raw) return null;
+                if (raw.startsWith(COMPRESS_PREFIX)) {
+                    // 压缩格式，尝试 UTF16 解压，失败则用 Base64
+                    const payload = raw.slice(COMPRESS_PREFIX.length);
+                    try {
+                        return LZString.decompressFromUTF16(payload);
+                    } catch (e) {
+                        return LZString.decompressFromBase64(payload);
+                    }
+                }
+                // 未压缩的旧数据，直接返回原始内容
+                return raw;
+            };
+
+            // 安全写入 localStorage（压缩存储 + 自动处理 QuotaExceededError）
             const safeSetItem = (key, value) => {
                 try {
-                    localStorage.setItem(key, value);
+                    compressSetItem(key, value);
                 } catch (e) {
                     if (e && (e.name === 'QuotaExceededError' || e.code === 22 || (e.message && e.message.toLowerCase().includes('quota')))) {
                         console.warn(`[localStorage] "${key}" 写入失败：存储空间已满，数据已同步到云端，本地缓存暂时跳过。`);
-                        // 不抛出异常，让调用方继续执行
+                        showToast(`⚠️ 本地存储空间不足，${key} 数据仅保存到云端`, 'warning');
                     } else {
                         throw e;
                     }
@@ -3190,13 +3223,13 @@
             };
             
             // 自定义字段管理
-            const customFields = ref(JSON.parse(localStorage.getItem('customFields') || '{}'));
+            const customFields = ref(JSON.parse(decompressGetItem('customFields') || '{}'));
             const fieldManageVisible = ref(false);
             const fieldManageView = ref('');
             const newFieldName = ref('');
             
             const saveCustomFields = () => {
-                localStorage.setItem('customFields', JSON.stringify(customFields.value));
+                safeSetItem('customFields', JSON.stringify(customFields.value));
                 showToast('字段配置已保存');
             };
             
@@ -7602,7 +7635,7 @@
             const allData = ref(JSON.parse(JSON.stringify(EMBEDDED_DATA)));
             
             // 从localStorage恢复，受管理数据集强制使用内嵌数据
-            const saved = localStorage.getItem('customerData');
+            const saved = decompressGetItem('customerData');
             if (saved) {
                 try {
                     const parsed = JSON.parse(saved);
@@ -7635,14 +7668,14 @@
                     });
                 });
                 if (migrated) {
-                    try { localStorage.setItem('customerData', JSON.stringify(allData.value)); } catch(e) { console.warn('迁移数据写入localStorage失败(quota):', e.name); }
+                    try { safeSetItem('customerData', JSON.stringify(allData.value)); } catch(e) { console.warn('迁移数据写入localStorage失败(quota):', e.name); }
                     console.log('✅ 数据迁移：晓丽 → 李晓丽');
                 }
                 try { localStorage.setItem('migrate_xiaoli_done', '1'); } catch(e) {}
             }
             
             // 会话记录数据
-            const records = ref(JSON.parse(localStorage.getItem('workRecords') || '[]'));
+            const records = ref(JSON.parse(decompressGetItem('workRecords') || '[]'));
             const recordPage = ref(1);
             const recordPageSize = 20;
             const searchText = ref('');
@@ -7654,7 +7687,7 @@
             const filterCss = ref('');
             
             // 配置记录数据
-            const configs = ref(JSON.parse(localStorage.getItem('workConfigs') || '[]'));
+            const configs = ref(JSON.parse(decompressGetItem('workConfigs') || '[]'));
             const configPage = ref(1);
             const configFilterSource = ref('');
             const configFilterDate = ref('');
@@ -7663,7 +7696,7 @@
             const configFilterCss = ref('');
             
             // 会议记录数据
-            const meetings = ref(JSON.parse(localStorage.getItem('workMeetings') || '[]'));
+            const meetings = ref(JSON.parse(decompressGetItem('workMeetings') || '[]'));
             const meetingPage = ref(1);
             const meetingFilterType = ref('');
             const meetingFilterDate = ref('');
@@ -7672,7 +7705,7 @@
             const meetingFilterCss = ref('');
             
             // 周报相关
-            const weeklyReports = ref(JSON.parse(localStorage.getItem('weeklyReports') || '[]'));
+            const weeklyReports = ref(JSON.parse(decompressGetItem('weeklyReports') || '[]'));
             const currentWeek = ref(getCurrentWeek());
             const summaryWeek = ref(getCurrentWeek());
             const weeklyForm = ref({
