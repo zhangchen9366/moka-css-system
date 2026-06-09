@@ -2779,6 +2779,20 @@
                 return result;
             };
 
+            // 安全写入 localStorage，自动处理 QuotaExceededError（必须定义在所有调用方之前）
+            const safeSetItem = (key, value) => {
+                try {
+                    localStorage.setItem(key, value);
+                } catch (e) {
+                    if (e && (e.name === 'QuotaExceededError' || e.code === 22 || (e.message && e.message.toLowerCase().includes('quota')))) {
+                        console.warn(`[localStorage] "${key}" 写入失败：存储空间已满，数据已同步到云端，本地缓存暂时跳过。`);
+                        // 不抛出异常，让调用方继续执行
+                    } else {
+                        throw e;
+                    }
+                }
+            };
+
             // 同步所有数据到云端（合并模式，不会覆盖云端已有数据）
             const syncAllToCloud = async () => {
                 isSyncing.value = true;
@@ -8173,19 +8187,6 @@
             };
             
             // 数据持久化 - 受管理数据集已在初始化时合并处理，此处仅保留用户编辑数据
-            // 安全写入 localStorage，自动处理 QuotaExceededError
-            const safeSetItem = (key, value) => {
-                try {
-                    localStorage.setItem(key, value);
-                } catch (e) {
-                    if (e && (e.name === 'QuotaExceededError' || e.code === 22 || (e.message && e.message.toLowerCase().includes('quota')))) {
-                        console.warn(`[localStorage] "${key}" 写入失败：存储空间已满，数据已同步到云端，本地缓存暂时跳过。`);
-                        // 不抛出异常，让调用方继续执行
-                    } else {
-                        throw e;
-                    }
-                }
-            };
 
             const saveToStorage = () => { safeSetItem('customerData', JSON.stringify(allData.value)); };
             const saveRecords = () => { safeSetItem('workRecords', JSON.stringify(records.value)); };
