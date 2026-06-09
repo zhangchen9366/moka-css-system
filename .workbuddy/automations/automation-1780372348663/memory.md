@@ -1,5 +1,22 @@
 # Moka CSS 自动部署 - 执行记录
 
+## 2026-06-09 16:25
+
+**结果**: ✅ 成功
+
+**详情**:
+- GitHub push: ✅ (commit `36a7440`, deploy: 06-09 16:25)
+- Gitee 同步: ✅
+- COS 上传: ✅ (5 files: index.html, vue.global.prod.js, echarts.min.js, xlsx.full.min.js, cos-js-sdk-v5.min.js)
+
+**变更内容**: .workbuddy/memory/2026-06-09.md 更新（1 file changed）。
+
+**排查结果**: 用户此前报告"拉取合并"和"合并上传"报错。经检查：
+- GitHub origin/main、Gitee main 分支与本地 main 完全同步（HEAD 一致）
+- Gitee 存在一个旧的 `master` 分支（仅有 2 个初始 commit），与 main 分支不同，可能是历史遗留
+- 当前 deploy.sh 执行一切正常，三个环节（GitHub push、Gitee 同步、COS 上传）均成功
+- 自动化恢复运行正常
+
 ## 2026-06-04 13:25
 
 **结果**: ✅ 成功
