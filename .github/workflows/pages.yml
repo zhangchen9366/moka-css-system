@@ -24,10 +24,19 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - name: Prepare static files
+        run: |
+          mkdir -p _site
+          cp index.html _site/
+          cp lz-string.min.js _site/ 2>/dev/null || true
+          cp vue.global.prod.js _site/ 2>/dev/null || true
+          cp echarts.min.js _site/ 2>/dev/null || true
+          cp xlsx.full.min.js _site/ 2>/dev/null || true
+          cp cos-js-sdk-v5.min.js _site/ 2>/dev/null || true
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '_site'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

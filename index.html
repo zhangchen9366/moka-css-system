@@ -2656,8 +2656,49 @@
     <script src="cos-js-sdk-v5.min.js"></script>
     <script src="lz-string.min.js"></script>
     <script>
-    const {createApp, ref, computed, onMounted, onUnmounted, nextTick} = Vue;
-    createApp({
+        // ===== IndexedDB 后备存储（localStorage 超限时降级使用）=====
+        const DB_NAME = 'moka-css-system-v1';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'dataStore';
+        let _db = null;
+
+        const initIDB = () => new Promise((resolve, reject) => {
+            if (_db) { resolve(_db); return; }
+            const req = indexedDB.open(DB_NAME, DB_VERSION);
+            req.onerror = () => reject(req.error);
+            req.onsuccess = () => { _db = req.result; resolve(_db); };
+            req.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME);
+                }
+            };
+        });
+
+        const idbSet = async (key, value) => {
+            const db = await initIDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                const req = store.put(value, key);
+                req.onsuccess = () => resolve();
+                req.onerror = () => reject(req.error);
+            });
+        };
+
+        const idbGet = async (key) => {
+            const db = await initIDB();
+            return new Promise((resolve) => {
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const req = store.get(key);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => resolve(null);
+            });
+        };
+
+        const {createApp, ref, computed, onMounted, onUnmounted, nextTick} = Vue;
+        createApp({
         setup() {
             // ===== COS 云端同步配置 =====
             const COS_CONFIG = window.COS_CREDENTIALS || {
@@ -2812,16 +2853,76 @@
                 return raw;
             };
 
-            // 安全写入 localStorage（压缩存储 + 自动处理 QuotaExceededError）
+            // 安全写入 localStorage（压缩存储 + 自动降级到 IndexedDB）
             const safeSetItem = (key, value) => {
                 try {
                     compressSetItem(key, value);
+                    // localStorage 写入成功，同步更新 IndexedDB（后备）
+                    setTimeout(() => {
+                        idbSet(key, value).catch(() => {});
+                    }, 0);
                 } catch (e) {
                     if (e && (e.name === 'QuotaExceededError' || e.code === 22 || (e.message && e.message.toLowerCase().includes('quota')))) {
-                        console.warn(`[localStorage] "${key}" 写入失败：存储空间已满，数据已同步到云端，本地缓存暂时跳过。`);
-                        showToast(`⚠️ 本地存储空间不足，${key} 数据仅保存到云端`, 'warning');
+                        console.warn(`[localStorage] "${key}" 写入失败：存储空间已满，降级到 IndexedDB。`);
+                        // 异步写入 IndexedDB
+                        idbSet(key, value).then(() => {
+                            console.log(`[IndexedDB] "${key}" 写入成功`);
+                        }).catch(err => {
+                            console.error(`[IndexedDB] "${key}" 写入失败:`, err);
+                        });
+                        showToast(`⚠️ 本地存储空间不足，${key} 已保存到 IndexedDB`, 'warning');
                     } else {
                         throw e;
+                    }
+                }
+            };
+
+            // 从 IndexedDB 补充加载数据（用于 localStorage 已满时恢复数据）
+            const syncFromIndexedDB = async () => {
+                const keys = [
+                    {key: 'customerData', ref: 'allData', isJson: true},
+                    {key: 'workRecords', ref: 'records', isJson: true},
+                    {key: 'workConfigs', ref: 'configs', isJson: true},
+                    {key: 'workMeetings', ref: 'meetings', isJson: true},
+                    {key: 'weeklyReports', ref: 'weeklyReports', isJson: true},
+                    {key: 'customFields', ref: 'customFields', isJson: true},
+                ];
+                for (const item of keys) {
+                    try {
+                        const localRaw = decompressGetItem(item.key);
+                        const dbRaw = await idbGet(item.key);
+                        if (!dbRaw) continue;
+                        // 如果 IndexedDB 中有数据，但 localStorage 中没有（或数据更少），使用 IndexedDB 的数据
+                        const localParsed = localRaw ? JSON.parse(localRaw) : null;
+                        const dbParsed = typeof dbRaw === 'string' ? JSON.parse(dbRaw) : dbRaw;
+                        if (!localParsed) {
+                            // localStorage 中没有，用 IndexedDB 的数据
+                            if (item.key === 'customerData') {
+                                Object.assign(allData.value, dbParsed);
+                            } else if (item.ref === 'records') {
+                                records.value = dbParsed;
+                            } else if (item.ref === 'configs') {
+                                configs.value = dbParsed;
+                            } else if (item.ref === 'meetings') {
+                                meetings.value = dbParsed;
+                            } else if (item.ref === 'weeklyReports') {
+                                weeklyReports.value = dbParsed;
+                            } else if (item.ref === 'customFields') {
+                                customFields.value = dbParsed;
+                            }
+                            console.log(`[IndexedDB] 已从 IndexedDB 恢复 ${item.key}`);
+                        } else if (Array.isArray(dbParsed) && Array.isArray(localParsed)) {
+                            // 数组数据：如果 IndexedDB 中的数据更多，合并
+                            if (dbParsed.length > localParsed.length) {
+                                if (item.ref === 'records') records.value = dbParsed;
+                                else if (item.ref === 'configs') configs.value = dbParsed;
+                                else if (item.ref === 'meetings') meetings.value = dbParsed;
+                                else if (item.ref === 'weeklyReports') weeklyReports.value = dbParsed;
+                                console.log(`[IndexedDB] 已从 IndexedDB 恢复更完整的 ${item.key} (${dbParsed.length} 条)`);
+                            }
+                        }
+                    } catch (e) {
+                        console.error(`[IndexedDB] 同步 ${item.key} 失败:`, e);
                     }
                 }
             };
@@ -9138,6 +9239,12 @@
             onMounted(() => {
                 document.addEventListener('keydown', handleLightboxKey);
                 loadHealthScores(true);
+                // 从 IndexedDB 恢复可能因 localStorage 配额超限而未写入的数据
+                syncFromIndexedDB().then(() => {
+                    console.log('[IndexedDB] 数据同步完成');
+                }).catch(err => {
+                    console.error('[IndexedDB] 数据同步失败:', err);
+                });
             });
             onUnmounted(() => {
                 document.removeEventListener('keydown', handleLightboxKey);
