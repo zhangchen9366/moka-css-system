@@ -2352,6 +2352,7 @@
                                             <td v-for="col in columns" :key="col.key">
                                                 <span v-if="col.isTag" class="tag" :class="getTypeClass(row[col.key])">{{row[col.key]}}</span>
                                                 <span v-else-if="(col.key === '附件' || col.key === '截图') && row[col.key]" style="color:#67c23a" title="有附件">📎</span>
+                                                <span v-else-if="currentView === '商机推进情况' && (col.key === bizPersonField) && row[col.key]" @click.stop="drillToBizPerson(row[col.key])" style="color:#6366f1;cursor:pointer;text-decoration:underline;text-underline-offset:3px;font-weight:500" :title="'点击查看 ' + row[col.key] + ' 的商机统计'">{{row[col.key]}}</span>
                                                 <span v-else :title="row[col.key]">{{truncate(row[col.key],35)}}</span>
                                             </td>
                                             <td @click.stop="">
