@@ -2973,7 +2973,7 @@
                     
                     const now = new Date().toLocaleString('zh-CN');
                     lastSyncTime.value = now;
-                    localStorage.setItem('lastSyncTime', now);
+                    try { localStorage.setItem('lastSyncTime', now); } catch(e) {}
                     
                     if (failCount === 0) {
                         showToast(`合并同步成功 (${successItems.join('、')})`, 'success');
@@ -3046,7 +3046,7 @@
                     
                     const now = new Date().toLocaleString('zh-CN');
                     lastSyncTime.value = now;
-                    localStorage.setItem('lastSyncTime', now);
+                    try { localStorage.setItem('lastSyncTime', now); } catch(e) {}
                     
                     if (results.length > 0) {
                         showToast(`✅ 从云端加载成功 (${results.join('、')})，记录数已更新`, 'success');
@@ -3299,8 +3299,8 @@
                     return;
                 }
                 isLoggedIn.value = true;
-                localStorage.setItem('isLoggedIn', 'true');
-                localStorage.setItem('userEmail', email);
+                try { localStorage.setItem('isLoggedIn', 'true'); } catch(e) {}
+                try { localStorage.setItem('userEmail', email); } catch(e) {}
                 showToast('登录成功，正在从云端加载数据...');
                 // 登录成功后自动从云端加载数据
                 loadAllFromCloud();
@@ -8451,8 +8451,8 @@
             // 返回路径（用于从统计卡片返回数据看板）
             const returnView = ref(localStorage.getItem('returnView') || 'dashboard');
             
-            // 商机推进二级菜单折叠控制
-            const bizMenuExpanded = ref(false);
+            // 商机推进二级菜单折叠控制（如果当前视图是商机相关，初始就展开）
+            const bizMenuExpanded = ref(['商机推进情况', '商机人员统计', '商机进展概览'].includes(decompressGetItem('lastView') || localStorage.getItem('lastView') || ''));
             const toggleBizMenu = () => { bizMenuExpanded.value = !bizMenuExpanded.value; };
             
             // ATS客户 / 一体化客户 二级菜单
@@ -8485,13 +8485,13 @@
                 // 如果是从数据看板点击统计卡片穿透进来的，保存返回路径
                 if (saveReturn) {
                     returnView.value = currentView.value;
-                    localStorage.setItem('returnView', returnView.value);
+                    try { localStorage.setItem('returnView', returnView.value); } catch(e) {}
                 } else if (v !== 'dashboard' && currentView.value === 'dashboard') {
                     // 从数据看板进入其他页面时，保存返回路径
                     returnView.value = 'dashboard';
-                    localStorage.setItem('returnView', 'dashboard');
+                    try { localStorage.setItem('returnView', 'dashboard'); } catch(e) {}
                 }
-                localStorage.setItem('lastView', v);
+                try { localStorage.setItem('lastView', v); } catch(e) {}
                 currentView.value = v; searchText.value = ''; filterType.value = ''; currentPage.value = 1;
                 recordPage.value = 1; configPage.value = 1; meetingPage.value = 1;
                 filterChannel.value = ''; filterStatus.value = ''; filterDate.value = '';
