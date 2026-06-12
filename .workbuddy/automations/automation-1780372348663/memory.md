@@ -1,5 +1,18 @@
 # Moka CSS 自动部署 - 执行记录
 
+## 2026-06-12 15:40
+
+**结果**: ✅ 成功（需修复 COS 依赖）
+
+**详情**:
+- GitHub push: ✅ (commit `3301b49`, deploy: 06-12 15:42)
+- Gitee 同步: ✅
+- COS 上传: ✅ (6 files: index.html, vue.global.prod.js, echarts.min.js, xlsx.full.min.js, cos-js-sdk-v5.min.js, lz-string.min.js)
+
+**变更内容**: automation memory 文件更新（1 file changed, 11 insertions）。
+
+**问题**: 首次 deploy.sh 执行时 COS 上传失败（`ModuleNotFoundError: No module named 'qcloud_cos'`），通过 `pip3 install cos-python-sdk-v5` 修复后重跑成功。
+
 ## 2026-06-12 14:40
 
 **结果**: ✅ 成功
