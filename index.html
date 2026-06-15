@@ -1534,7 +1534,7 @@
                         <h2>📈 数据看板</h2>
                         <div>
                             <span v-if="lastSyncTime" style="font-size:12px;color:#909399;margin-right:12px">上次同步: {{lastSyncTime}}</span>
-                            <button class="btn btn-default" @click="loadAllFromCloud" :disabled="isSyncing" style="margin-right:8px" title="从云端拉取并合并数据，不会覆盖本地">{{isSyncing?'加载中...':'☁️ 拉取合并'}}</button>
+                            <button class="btn btn-default" @click="loadAllFromCloud" :disabled="isSyncing" style="margin-right:8px" title="从云端拉取数据，合并前会先展示差异确认">{{isSyncing?'加载中...':'☁️ 拉取合并'}}</button>
                             <button class="btn btn-primary" @click="syncAllToCloud" :disabled="isSyncing" title="将本地数据与云端合并，不会丢失任何人的数据">{{isSyncing?'同步中...':'☁️ 合并上传'}}</button>
                             <button class="btn btn-default" @click="showImportModal=true" style="margin-left:8px">📥 导入JSON</button>
                             <button class="btn btn-default" @click="exportAll">📤 导出Excel</button>
@@ -2592,6 +2592,48 @@
         </div>
         
         <!-- 导入弹窗 -->
+        <!-- 云端合并确认弹窗 -->
+        <div class="modal-overlay" v-if="showMergeConfirm" @click.self="showMergeConfirm=false">
+            <div class="modal" style="max-width:600px">
+                <div class="modal-header"><h3>⚠️ 云端数据合并确认</h3><button class="modal-close" @click="showMergeConfirm=false">×</button></div>
+                <div class="modal-body">
+                    <div style="padding:12px;background:#fff3e0;border-radius:8px;margin-bottom:16px;font-size:13px;color:#e65100;line-height:1.6">
+                        ⚠️ <b>注意：合并会从云端追加新数据，但不会覆盖您的本地数据和删除操作。</b><br>
+                        以下为云端与本地数据的差异预览：
+                    </div>
+                    <table style="width:100%;font-size:13px;border-collapse:collapse">
+                        <thead>
+                            <tr style="background:#f5f5f5">
+                                <th style="padding:8px;text-align:left;border-bottom:2px solid #e0e0e0">数据类别</th>
+                                <th style="padding:8px;text-align:center;border-bottom:2px solid #e0e0e0">本地</th>
+                                <th style="padding:8px;text-align:center;border-bottom:2px solid #e0e0e0">云端</th>
+                                <th style="padding:8px;text-align:center;border-bottom:2px solid #e0e0e0">新增</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="d in mergeDiff" :key="d.category" style="border-bottom:1px solid #f0f0f0">
+                                <td style="padding:6px 8px">{{d.category}}</td>
+                                <td style="padding:6px 8px;text-align:center">{{d.localCount}}</td>
+                                <td style="padding:6px 8px;text-align:center">{{d.cloudCount}}</td>
+                                <td style="padding:6px 8px;text-align:center;font-weight:bold" :style="{color: d.newFromCloud > 0 ? '#e65100' : '#999'}">
+                                    {{d.newFromCloud > 0 ? '+' + d.newFromCloud : '—'}}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div v-if="mergeDiff.every(d => d.newFromCloud === 0)" style="margin-top:12px;text-align:center;color:#999;font-size:13px">
+                        ✅ 云端无新数据，无需合并
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-default" @click="showMergeConfirm=false">取消</button>
+                    <button class="btn btn-primary" @click="doMergeFromCloud" :disabled="isSyncing">
+                        {{isSyncing ? '合并中...' : '确认合并'}}
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div class="modal-overlay" v-if="showImportModal" @click.self="showImportModal=false">
             <div class="modal" style="max-width:450px">
                 <div class="modal-header"><h3>📥 导入数据</h3><button class="modal-close" @click="showImportModal=false">×</button></div>
@@ -2806,20 +2848,34 @@
             };
 
             // 合并客户数据（两级结构：类别 → 数组）
+            // 规则：本地为主，云端补充。本地已有行保持不变（保留用户编辑和删除），云端仅在本地缺失时追加
             const mergeCustomers = (cloud, local) => {
-                const result = { ...cloud };
-                for (const [cat, localItems] of Object.entries(local || {})) {
-                    if (!Array.isArray(localItems)) continue;
-                    if (!result[cat]) { result[cat] = localItems; continue; }
-                    const cloudItems = result[cat] || [];
-                    const merged = [...cloudItems];
-                    for (const item of localItems) {
-                        const exists = cloudItems.some(c => c['字段1'] === item['字段1']);
-                        if (!exists) merged.push(item);
+                const result = { ...local };  // 以本地为基础，保留用户的所有编辑和删除
+                for (const [cat, cloudItems] of Object.entries(cloud || {})) {
+                    if (!Array.isArray(cloudItems)) continue;
+                    if (!result[cat]) { result[cat] = [...cloudItems]; continue; }
+                    const localItems = result[cat] || [];
+                    const merged = [...localItems];
+                    for (const item of cloudItems) {
+                        const exists = localItems.some(l => l['字段1'] === item['字段1']);
+                        if (!exists) merged.push(item);  // 只追加本地不存在的云端行
                     }
                     result[cat] = merged;
                 }
                 return result;
+            };
+            // 计算合并差异（用于确认弹窗展示）
+            const calcMergeDiff = (cloud, local) => {
+                const diff = [];
+                const allCats = new Set([...Object.keys(cloud || {}), ...Object.keys(local || {})]);
+                for (const cat of allCats) {
+                    const cloudItems = (cloud && cloud[cat]) || [];
+                    const localItems = (local && local[cat]) || [];
+                    const localIds = new Set(localItems.map(i => i['字段1']));
+                    const cloudOnly = cloudItems.filter(c => !localIds.has(c['字段1']));
+                    diff.push({ category: cat, localCount: localItems.length, cloudCount: cloudItems.length, newFromCloud: cloudOnly.length });
+                }
+                return diff;
             };
 
             // 压缩存储辅助函数（使用 lz-string 压缩，解决 localStorage 5MB 限额问题）
@@ -2990,25 +3046,49 @@
                 }
             };
             
-            // 从云端加载所有数据（合并模式，不会覆盖本地数据）
+            // 从云端加载所有数据（需要用户确认后才合并）
             const loadAllFromCloud = async () => {
-                isSyncing.value = true;
                 syncError.value = '';
-                const results = [];
-                const startTime = Date.now();
                 try {
-                    // 1. 客户数据：云端合并到本地
                     const cloudCustomers = await cosGet('customers');
+                    if (!cloudCustomers) {
+                        showToast('⚠️ 云端无响应，无法获取数据', 'warning');
+                        return;
+                    }
+                    // 计算差异
+                    const diff = calcMergeDiff(cloudCustomers, allData.value);
+                    mergeDiff.value = diff;
+                    cloudDataCache.value = cloudCustomers;
+                    showMergeConfirm.value = true;
+                    
+                    // 如果云端无新数据，直接提示
+                    const totalNew = diff.reduce((s, d) => s + d.newFromCloud, 0);
+                    if (totalNew === 0) {
+                        showToast('✅ 云端无新数据，当前数据已是最新', 'success');
+                    }
+                } catch (error) {
+                    console.error('从云端加载数据失败:', error);
+                    showToast('加载异常: ' + error.message, 'error');
+                }
+            };
+            
+            // 确认后执行合并
+            const doMergeFromCloud = async () => {
+                isSyncing.value = true;
+                const results = [];
+                try {
+                    // 备份当前数据
+                    saveDataBackup();
+                    
+                    const cloudCustomers = cloudDataCache.value;
                     if (cloudCustomers) {
                         const merged = mergeCustomers(cloudCustomers, allData.value);
                         Object.assign(allData.value, merged);
                         saveToStorage();
                         results.push('客户数据');
-                    } else {
-                        console.warn('⚠️ 客户数据加载失败（云端无响应）');
                     }
                     
-                    // 2. 会话记录：云端+本地合并
+                    // 同步其他数据（会话/配置/会议）
                     const cloudRecords = await cosGet('records');
                     if (cloudRecords && Array.isArray(cloudRecords)) {
                         const mergedRecords = mergeArrays(cloudRecords, records.value, ['提交时间', '客户']);
@@ -3016,11 +3096,8 @@
                         records.value = mergedRecords;
                         saveRecords();
                         results.push('会话记录');
-                    } else {
-                        console.warn('⚠️ 会话记录加载失败（云端无响应）');
                     }
                     
-                    // 3. 配置记录
                     const cloudConfigs = await cosGet('configs');
                     if (cloudConfigs && Array.isArray(cloudConfigs)) {
                         const mergedConfigs = mergeArrays(cloudConfigs, configs.value, ['日期', '客户']);
@@ -3028,11 +3105,8 @@
                         configs.value = mergedConfigs;
                         saveConfigs();
                         results.push('配置记录');
-                    } else {
-                        console.warn('⚠️ 配置记录加载失败（云端无响应）');
                     }
                     
-                    // 4. 会议记录
                     const cloudMeetings = await cosGet('meetings');
                     if (cloudMeetings && Array.isArray(cloudMeetings)) {
                         const mergedMeetings = mergeArrays(cloudMeetings, meetings.value, ['日期', '会议主题']);
@@ -3040,24 +3114,20 @@
                         meetings.value = mergedMeetings;
                         saveMeetings();
                         results.push('会议记录');
-                    } else {
-                        console.warn('⚠️ 会议记录加载失败（云端无响应）');
                     }
                     
                     const now = new Date().toLocaleString('zh-CN');
                     lastSyncTime.value = now;
                     try { localStorage.setItem('lastSyncTime', now); } catch(e) {}
                     
-                    if (results.length > 0) {
-                        showToast(`✅ 从云端加载成功 (${results.join('、')})，记录数已更新`, 'success');
-                    } else {
-                        showToast('⚠️ 云端连接失败，请按F12查看Console错误，稍后重试', 'warning');
-                    }
+                    showToast(`✅ 合并成功 (${results.join('、')})`, 'success');
                 } catch (error) {
-                    console.error('从云端加载数据失败:', error);
-                    showToast('加载异常: ' + error.message, 'error');
+                    console.error('合并失败:', error);
+                    showToast('合并异常: ' + error.message, 'error');
                 } finally {
                     isSyncing.value = false;
+                    showMergeConfirm.value = false;
+                    cloudDataCache.value = null;
                 }
             };
             
@@ -3301,9 +3371,9 @@
                 isLoggedIn.value = true;
                 try { localStorage.setItem('isLoggedIn', 'true'); } catch(e) {}
                 try { localStorage.setItem('userEmail', email); } catch(e) {}
-                showToast('登录成功，正在从云端加载数据...');
-                // 登录成功后自动从云端加载数据
-                loadAllFromCloud();
+                showToast('登录成功，使用本地数据。需要同步云端可点击「☁️ 拉取合并」', 'success');
+                // 登录后不再自动从云端加载数据，避免静默覆盖本地修改
+                // 云端合并由用户手动点击「☁️ 拉取合并」触发
             };
             
             const handleLogout = () => {
@@ -8300,9 +8370,28 @@
             const deleteIndex = ref(-1);
             const deleteType = ref('');
             const showImportModal = ref(false);
+            const showMergeConfirm = ref(false);
+            const mergeDiff = ref([]);
+            const cloudDataCache = ref(null);  // 缓存云端数据，确认后使用
             const toast = ref({show:false, msg:'', type:'success'});
             
             const showToast = (msg, type='success') => { toast.value = {show:true, msg, type}; setTimeout(() => toast.value.show = false, 2500); };
+            
+            // 云端合并前自动备份当前数据
+            const saveDataBackup = () => {
+                const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                const bkKey = `customerData_backup_${ts}`;
+                try {
+                    const current = decompressGetItem('customerData');
+                    if (current) {
+                        compressSetItem(bkKey, current);
+                        console.log(`[备份] 已备份到 ${bkKey}`);
+                        showToast(`✅ 已自动备份当前数据 (${ts})`, 'success');
+                    }
+                } catch (e) {
+                    console.warn('[备份] 备份失败:', e.message);
+                }
+            };
             
             // 复制文本到剪贴板
             const copyToClipboard = (text, label='内容') => {
@@ -9256,7 +9345,7 @@
                 // 用户
                 isLoggedIn, loginEmail, loginError, handleLogin, handleLogout, currentUser, teamMembers, cssList, categoryOptions,
                 // 云端同步
-                isSyncing, lastSyncTime, syncAllToCloud, loadAllFromCloud,
+                isSyncing, lastSyncTime, syncAllToCloud, loadAllFromCloud, showMergeConfirm, mergeDiff, doMergeFromCloud,
                 // 数据
                 allData, records, configs, meetings, weeklyReports,
                 // 周报汇总
