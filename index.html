@@ -8317,17 +8317,22 @@
             
             const exportAllWeekly = () => {
                 if (myWeeklyHistory.value.length === 0) { showToast('无数据', 'error'); return; }
-                const wb = XLSX.utils.book_new();
-                const wsData = myWeeklyHistory.value.map(r => ({
-                    '周次': r.week, '填写人': r.填写人, '咨询量': r.咨询量 || 0,
-                    '配置时长': r.配置时长 || 0, '会议时长': r.会议时长 || 0,
-                    'EVA进展数': (r.eva列表 || []).length, '健康分进展数': (r.健康分列表 || []).length,
-                    '更新时间': formatDate(r.更新时间)
-                }));
-                const ws = XLSX.utils.json_to_sheet(wsData);
-                XLSX.utils.book_append_sheet(wb, ws, '周报历史');
-                XLSX.writeFile(wb, `我的周报_${Date.now()}.xlsx`);
-                showToast('导出成功');
+                try {
+                    const wb = XLSX.utils.book_new();
+                    const wsData = myWeeklyHistory.value.map(r => ({
+                        '周次': r.week, '填写人': r.填写人, '咨询量': r.咨询量 || 0,
+                        '配置时长': r.配置时长 || 0, '会议时长': r.会议时长 || 0,
+                        'EVA进展数': (r.eva列表 || []).length, '健康分进展数': (r.健康分列表 || []).length,
+                        '更新时间': formatDate(r.更新时间)
+                    }));
+                    const ws = XLSX.utils.json_to_sheet(wsData);
+                    XLSX.utils.book_append_sheet(wb, ws, '周报历史');
+                    XLSX.writeFile(wb, `我的周报_${Date.now()}.xlsx`);
+                    showToast('导出成功');
+                } catch(e) {
+                    console.error('周报Excel导出失败:', e);
+                    showToast('导出失败: ' + (e.message || '未知错误'), 'error');
+                }
             };
             
             const generateTeamReport = () => {
@@ -8343,13 +8348,57 @@
             
             const formatDate = (d) => d ? new Date(d).toLocaleString('zh-CN') : '';
             
+            // 清理导出数据中的附件/截图字段（base64数据会导致XLSX导出卡死）
+            const sanitizeForExport = (row) => {
+                const clean = {};
+                for (const [key, val] of Object.entries(row)) {
+                    const k = String(key);
+                    if (k === '附件' || k === '截图') {
+                        const strVal = String(val || '');
+                        if (strVal.startsWith('[')) {
+                            try {
+                                const arr = JSON.parse(strVal);
+                                if (Array.isArray(arr) && arr.length > 0) {
+                                    const names = arr.map(item => {
+                                        if (String(item).startsWith('data:')) {
+                                            const mime = String(item).match(/^data:([^;]+)/);
+                                            return mime ? `[图片:${mime[1].split('/')[1] || 'unknown'}]` : '[图片]';
+                                        }
+                                        return String(item);
+                                    });
+                                    clean[key] = `${names.length}个附件: ${names.join(', ')}`;
+                                } else {
+                                    clean[key] = strVal;
+                                }
+                            } catch(e) {
+                                clean[key] = strVal;
+                            }
+                        } else if (strVal.includes('data:')) {
+                            clean[key] = '[含图片/文件附件]';
+                        } else {
+                            clean[key] = val;
+                        }
+                    } else {
+                        clean[key] = val;
+                    }
+                }
+                return clean;
+            };
+
             // Excel导出函数
             const exportToExcel = (data, filename, sheetname) => {
                 if (!data || data.length === 0) { showToast('无数据可导出', 'error'); return; }
-                const wb = XLSX.utils.book_new();
-                const ws = XLSX.utils.json_to_sheet(data);
-                XLSX.utils.book_append_sheet(wb, ws, sheetname || 'Sheet1');
-                XLSX.writeFile(wb, `${filename}_${Date.now()}.xlsx`);
+                try {
+                    const cleanData = data.map(sanitizeForExport);
+                    const wb = XLSX.utils.book_new();
+                    const ws = XLSX.utils.json_to_sheet(cleanData);
+                    XLSX.utils.book_append_sheet(wb, ws, sheetname || 'Sheet1');
+                    XLSX.writeFile(wb, `${filename}_${Date.now()}.xlsx`);
+                    showToast('导出成功');
+                } catch(e) {
+                    console.error('Excel导出失败:', e);
+                    showToast('导出失败: ' + (e.message || '未知错误'), 'error');
+                }
             };
             
             // 通用方法
@@ -9015,7 +9064,6 @@
             const exportRecordsExcel = () => {
                 if (filteredRecords.value.length === 0) { showToast('无数据', 'error'); return; }
                 exportToExcel(filteredRecords.value, '会话记录', '会话记录');
-                showToast('导出成功');
             };
             
             // 配置记录相关
@@ -9055,7 +9103,6 @@
             const exportConfigsExcel = () => {
                 if (filteredConfigs.value.length === 0) { showToast('无数据', 'error'); return; }
                 exportToExcel(filteredConfigs.value, '配置记录', '配置记录');
-                showToast('导出成功');
             };
             
             // 会议记录相关（推进记录）
@@ -9094,26 +9141,32 @@
             const exportMeetingsExcel = () => {
                 if (filteredMeetings.value.length === 0) { showToast('无数据', 'error'); return; }
                 exportToExcel(filteredMeetings.value, '会议记录', '会议记录');
-                showToast('导出成功');
             };
             
             // 导出
             const exportCurrentExcel = () => {
                 if (filteredData.value.length === 0) { showToast('无数据', 'error'); return; }
                 exportToExcel(filteredData.value, currentView.value, currentView.value);
-                showToast('导出成功');
             };
             
             const exportAll = () => {
-                const wb = XLSX.utils.book_new();
-                Object.keys(allData.value).forEach(key => {
-                    if (allData.value[key].length > 0) {
-                        const ws = XLSX.utils.json_to_sheet(allData.value[key]);
-                        XLSX.utils.book_append_sheet(wb, ws, key.slice(0, 31));
-                    }
-                });
-                XLSX.writeFile(wb, `客户管理报表_${Date.now()}.xlsx`);
-                showToast('导出成功');
+                const hasData = Object.values(allData.value).some(arr => arr.length > 0);
+                if (!hasData) { showToast('无数据可导出', 'error'); return; }
+                try {
+                    const wb = XLSX.utils.book_new();
+                    Object.keys(allData.value).forEach(key => {
+                        if (allData.value[key].length > 0) {
+                            const cleanData = allData.value[key].map(sanitizeForExport);
+                            const ws = XLSX.utils.json_to_sheet(cleanData);
+                            XLSX.utils.book_append_sheet(wb, ws, key.slice(0, 31));
+                        }
+                    });
+                    XLSX.writeFile(wb, `客户管理报表_${Date.now()}.xlsx`);
+                    showToast('导出成功');
+                } catch(e) {
+                    console.error('Excel导出失败:', e);
+                    showToast('导出失败: ' + (e.message || '未知错误'), 'error');
+                }
             };
             
             const exportAllJSON = () => {
