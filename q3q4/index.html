@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>华东区域 2026 Q3 总结 &amp; Q4 规划</title>
+<style>
+:root{
+  --ink:#0f172a; --ink2:#334155; --mut:#64748b; --mut2:#94a3b8;
+  --line:#e6ebf3; --soft:#f5f7fb; --card:#fff;
+  --blue:#2563eb; --blue-bg:#eff6ff; --blue-line:#bfdbfe;
+  --ok:#059669; --ok-bg:#ecfdf5;
+  --warn:#d97706; --warn-bg:#fffbeb;
+  --bad:#dc2626; --bad-bg:#fef2f2;
+  --r:16px; --sh:0 1px 2px rgba(15,23,42,.04), 0 14px 40px -20px rgba(15,23,42,.25);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:74px}
+body{
+  margin:0; background:var(--soft); color:var(--ink);
+  font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 22px}
+section{padding:64px 0}
+#q3{padding:46px 0}
+#q3 .card{padding:16px 18px}
+#q3 .card[style*="padding:8px"]{padding:6px 16px 10px!important}
+h2.sec{margin:0 0 6px;font-size:13px;letter-spacing:.16em;color:var(--blue);font-weight:700}
+h3.big{margin:0 0 20px;font-size:26px;line-height:1.3;letter-spacing:-.4px;font-weight:800}
+h3.big small{display:block;font-size:13px;font-weight:500;color:var(--mut);letter-spacing:0;margin-top:6px}
+.reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.reveal.in{opacity:1;transform:none}
+
+/* ---- 顶栏 ---- */
+.nav{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;gap:16px;height:54px}
+.nav b{font-size:14px;letter-spacing:.2px}
+.nav b em{font-style:normal;color:var(--blue)}
+.nav .links{margin-left:auto;display:flex;gap:20px;font-size:13.5px;color:var(--mut)}
+.nav .links a{color:inherit;text-decoration:none}
+.nav .links a:hover{color:var(--blue)}
+
+/* ---- Hero ---- */
+.hero{padding:86px 0 60px;background:linear-gradient(180deg,#fff 0%,var(--soft) 100%)}
+.hero h1{margin:0 0 18px;font-size:56px;line-height:1.12;letter-spacing:-1.4px;font-weight:800}
+.hero h1 span{background:linear-gradient(120deg,#2563eb,#0ea5e9);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{margin:0 0 26px;font-size:17px;color:var(--ink2);max-width:620px}
+.chips{display:flex;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--ink2)}
+.chips span{padding:7px 14px;border-radius:999px;background:#fff;border:1px solid var(--line);box-shadow:var(--sh)}
+
+/* ---- 卡片 ---- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:24px;box-shadow:var(--sh)}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi .t{font-size:12.5px;color:var(--mut);margin-bottom:6px}
+.kpi .v{font-size:24px;font-weight:800;letter-spacing:-.5px;line-height:1.15}
+.kpi .v i{font-style:normal;font-size:12.5px;font-weight:600;color:var(--mut);margin-left:2px}
+.kpi .s{font-size:12px;color:var(--mut2);margin-top:4px}
+.kpi.done .v{color:var(--ok)} .kpi.gap .v{color:var(--bad)} .kpi.q4 .v{color:var(--blue)}
+
+/* ---- 进度条 ---- */
+.prog{margin-top:14px}
+.prog .bar{height:10px;border-radius:999px;background:#eef2f8;overflow:hidden;position:relative}
+.prog .fill{height:100%;width:30.6%;border-radius:999px;background:linear-gradient(90deg,#3b82f6,#0ea5e9);transform-origin:left;animation:growX 1.2s cubic-bezier(.2,.7,.2,1) both}
+@keyframes growX{from{transform:scaleX(0)}}
+.prog .mark{position:absolute;top:-3px;left:30.6%;width:2px;height:16px;background:#0f172a;opacity:.25}
+.prog .lg{display:flex;justify-content:space-between;font-size:12px;color:var(--mut);margin-top:8px}
+
+/* ---- 图表 ---- */
+.chart{position:relative;height:186px;margin:22px 0 0}
+.chart .gl{position:absolute;left:0;right:0;border-top:1px dashed #cbd5e1;bottom:141px}
+.chart .gl b{position:absolute;right:0;top:-22px;font-size:11.5px;font-weight:600;color:var(--blue);background:var(--blue-bg);padding:2px 7px;border-radius:6px}
+.bars{position:absolute;inset:34px 0 24px;display:grid;grid-template-columns:repeat(6,1fr);gap:clamp(6px,2vw,28px);align-items:end}
+.bw{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%}
+.bf{width:100%;max-width:58px;border-radius:6px 6px 3px 3px;background:linear-gradient(180deg,#93c5fd,#60a5fa);position:relative}
+.bf span{position:absolute;top:-19px;left:50%;transform:translateX(-50%);font-size:12px;font-weight:700;color:var(--ink2);white-space:nowrap}
+.bf.peak{background:linear-gradient(180deg,#2563eb,#1d4ed8)}
+.bf.peak span{color:var(--blue)}
+.bf.zero{background:#eef2f8}
+.bf.zero span{color:var(--mut2)}
+.bl{position:absolute;bottom:-22px;font-size:12px;color:var(--mut)}
+.bw{position:relative}
+
+/* ---- 表格 ---- */
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:4px}
+.tbl th{text-align:right;font-weight:600;color:var(--mut);font-size:12px;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl td{text-align:right;padding:9px 10px;border-bottom:1px solid #f1f5f9;font-variant-numeric:tabular-nums}
+.tbl tr.total td{border-top:2px solid var(--line);border-bottom:none;font-weight:700;background:#fafcff}
+.tbl .need{color:var(--bad);font-weight:700}
+.tbl .now{color:var(--ok);font-weight:600}
+.tbl .mute{color:var(--mut2)}
+.badge{display:inline-block;font-size:11.5px;padding:2px 8px;border-radius:6px;background:var(--warn-bg);color:var(--warn);font-weight:600;vertical-align:1px}
+
+/* ---- 洞察 ---- */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px}
+.ins{display:flex;gap:10px;padding:12px 14px;border-radius:10px;background:#fff;border:1px solid var(--line)}
+.ins .ic{flex:none;width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:12px;font-weight:800;background:var(--blue-bg);color:var(--blue)}
+.ins.warn .ic{background:var(--warn-bg);color:var(--warn)}
+.ins.ok .ic{background:var(--ok-bg);color:var(--ok)}
+.ins p{margin:0;font-size:13.5px;color:var(--ink2);line-height:1.6}
+.ins p b{color:var(--ink)}
+
+/* ---- 结论条 ---- */
+.callout{margin-top:16px;padding:16px 20px;border-radius:12px;background:linear-gradient(120deg,#0f172a,#1e293b);color:#e2e8f0;font-size:14.5px;line-height:1.7}
+.callout b{color:#fff}
+.callout em{font-style:normal;color:#7dd3fc}
+
+/* ---- Skill ---- */
+.skillbox{display:grid;grid-template-columns:170px 1fr;gap:22px;align-items:center}
+.skillnum{text-align:center;padding:18px 8px;border-radius:var(--r);background:linear-gradient(160deg,#eff6ff,#e0f2fe);border:1px solid var(--blue-line)}
+.skillnum .n{font-size:48px;font-weight:800;line-height:1;letter-spacing:-2px;color:var(--blue)}
+.skillnum .l{font-size:12px;color:#1e40af;margin-top:6px;font-weight:600}
+.steps{display:grid;gap:9px}
+.step{display:flex;gap:12px;align-items:flex-start;padding:11px 16px;background:#fff;border:1px solid var(--line);border-radius:12px}
+.step .no{flex:none;width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700}
+.step h4{margin:0 0 1px;font-size:14px}
+.step p{margin:0;font-size:13px;color:var(--mut)}
+
+/* ---- 计划 ---- */
+.plan{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.plan .card.hl{border-color:var(--blue-line);box-shadow:0 1px 2px rgba(37,99,235,.06),0 18px 44px -24px rgba(37,99,235,.4)}
+.ptag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--blue-bg);color:var(--blue);margin-bottom:12px}
+.ptag.gray{background:#f1f5f9;color:var(--ink2)}
+.plan h4{margin:0 0 4px;font-size:21px;letter-spacing:-.3px;font-weight:800}
+.plan .lead{margin:0 0 16px;font-size:13.5px;color:var(--mut)}
+.plan ol{margin:0;padding-left:0;list-style:none;display:grid;gap:11px}
+.plan ol li{position:relative;padding-left:26px;font-size:14.5px;color:var(--ink2);line-height:1.65}
+.plan ol li::before{content:"";position:absolute;left:6px;top:9px;width:6px;height:6px;border-radius:50%;background:var(--blue)}
+.plan ol li b{color:var(--ink);font-weight:700}
+.span2{grid-column:span 2}
+
+/* ---- 收尾 ---- */
+.close{background:#0b1220;color:#e2e8f0;padding:84px 0}
+.close h3.big small{color:#94a3b8}
+.close .line{font-size:20px;line-height:1.9;letter-spacing:-.2px;max-width:760px}
+.close .line b{color:#fff}
+.close .line em{font-style:normal;color:#38bdf8;font-weight:700}
+.slogans{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:38px}
+.slogans div{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:20px}
+.slogans h5{margin:0 0 6px;font-size:16px;color:#fff}
+.slogans p{margin:0;font-size:13.5px;color:#94a3b8;line-height:1.6}
+.sign{margin-top:40px;font-size:13.5px;color:#64748b}
+footer{padding:26px 0;text-align:center;font-size:12.5px;color:var(--mut2);background:var(--soft)}
+
+@media(max-width:860px){
+  .hero h1{font-size:38px}
+  .grid4{grid-template-columns:1fr 1fr}
+  .two,.plan,.skillbox,.slogans{grid-template-columns:1fr}
+  .span2{grid-column:auto}
+  h3.big{font-size:24px}
+  .nav .links{display:none}
+  section{padding:48px 0}
+  .chart .gl b{right:auto;left:0}
+  .tbl{font-size:13px}
+  .tbl th,.tbl td{padding:10px 6px}
+}
+@media print{
+  @page{size:A4;margin:10mm}
+  body{background:#fff}
+  .nav{display:none}
+  .hero{padding:16px 0 10px;background:#fff}
+  .hero h1{font-size:34px;letter-spacing:-.8px}
+  .hero h1 span{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:#2563eb;-webkit-text-fill-color:#2563eb}
+  .hero p{font-size:14px;margin-bottom:12px}
+  .chips{font-size:11.5px}
+  section{padding:18px 0;page-break-inside:auto}
+  .card,.ins,.callout,.step,.plan>div,.skillbox{page-break-inside:avoid}
+  .grid4,.two{page-break-inside:avoid}
+  .chart{page-break-inside:avoid}
+  .reveal{opacity:1!important;transform:none!important}
+  .card,.chips span,.skillnum{box-shadow:none!important}
+  .card{border:1px solid #e2e8f0}
+  .prog .fill{animation:none!important;transform:none!important}
+  .grid4{grid-template-columns:repeat(4,1fr)}
+  .kpi .v{font-size:20px}
+  .bf{background:#93c5fd!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .bf.peak{background:#2563eb!important}
+  .prog .bar{border:1px solid #e2e8f0}
+  .callout,.close{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .close{background:#fff;color:var(--ink);padding:14px 0}
+  .close h3.big{color:var(--ink)!important;font-size:22px;margin-bottom:14px}
+  .close h3.big small{color:var(--mut)!important}
+  .close .line{font-size:13.5px;line-height:1.75}
+  .slogans{margin-top:16px;gap:10px}
+  .slogans div{padding:11px 14px}
+  .slogans h5{font-size:14px}
+  .slogans p{font-size:11.5px}
+  .sign{margin-top:16px;font-size:12px}
+  .skillbox{grid-template-columns:170px 1fr!important}
+  .skillnum{padding:14px 8px}
+  .skillnum .n{font-size:40px}
+  .close .line b{color:var(--ink)}
+  .close .line em{color:#2563eb}
+  .slogans div{background:#f8fafc;border-color:var(--line)}
+  .slogans h5{color:var(--ink)}
+  .slogans p{color:var(--ink2)}
+  footer{padding:10px 0}
+}
+</style>
+<noscript><style>.reveal{opacity:1;transform:none}</style></noscript>
+</head>
+<body>
+
+<div class="nav">
+  <div class="wrap">
+    <b>华东区域 <em>· 2026 Q3 总结 &amp; Q4 规划</em></b>
+    <div class="links">
+      <a href="#q3">Q3 复盘</a>
+      <a href="#skill">Skill 沉淀</a>
+      <a href="#q4">Q4 计划</a>
+      <a href="#close">一起打赢</a>
+    </div>
+  </div>
+</div>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="wrap">
+    <h1>华东区域<br><span>2026 Q3 总结 &amp; Q4 规划</span></h1>
+    <p>能力已经证明过（9 月 582 万），问题不是能不能，而是没有连续地做到。<br>Q4 要赢，赢在「每周都有新进度」，不是「月底冲一次」。</p>
+    <div class="chips">
+      <span>Q3 复盘 · 华东 EVA</span>
+      <span>9 个可复用 Skill</span>
+      <span>Q4 三大计划</span>
+      <span>数据截至 2026-10-13</span>
+    </div>
+  </div>
+</header>
+
+<!-- ============ Q3 ============ -->
+<section id="q3" style="background:#fff">
+  <div class="wrap">
+    <h2 class="sec reveal">01 / Q3 总结</h2>
+    <h3 class="big reveal">华东 EVA 积分消耗 · 目标达成情况
+      <small>H2 目标 4,365 万，累计完成 1,338 万（7–10 月），口径：EVA 积分消耗（万元）</small>
+    </h3>
+
+    <div class="grid4 reveal">
+      <div class="card kpi">
+        <div class="t">H2 积分消耗目标</div>
+        <div class="v">4,365<i>万</i></div>
+        <div class="s">2026 年 7–12 月</div>
+      </div>
+      <div class="card kpi done">
+        <div class="t">累计完成</div>
+        <div class="v">1,338<i>万</i></div>
+        <div class="s">完成率 30.6%</div>
+      </div>
+      <div class="card kpi gap">
+        <div class="t">未完成缺口</div>
+        <div class="v">3,027<i>万</i></div>
+        <div class="s">未完成率 69.4%</div>
+      </div>
+      <div class="card kpi q4">
+        <div class="t">Q4 需完成</div>
+        <div class="v">3,285<i>万</i></div>
+        <div class="s">占 H2 目标 75.3%</div>
+      </div>
+    </div>
+
+    <div class="prog reveal">
+      <div class="bar"><div class="fill"></div><div class="mark"></div></div>
+      <div class="lg"><span>已完成 1,338 万 · 30.6%</span><span>目标 4,365 万</span></div>
+    </div>
+
+    <!-- 月度趋势 -->
+    <h4 class="reveal" style="margin:30px 0 0;font-size:15px;font-weight:700">月度消耗走势</h4>
+    <div class="chart reveal">
+      <div class="gl"><b>Q4 月均所需 1,009 万</b></div>
+      <div class="bars">
+        <div class="bw"><div class="bf" style="height:20.5%"><span>226</span></div><i class="bl">7月</i></div>
+        <div class="bw"><div class="bf" style="height:24.7%"><span>272</span></div><i class="bl">8月</i></div>
+        <div class="bw"><div class="bf peak" style="height:52.9%"><span>582</span></div><i class="bl">9月</i></div>
+        <div class="bw"><div class="bf" style="height:23.5%"><span>258</span></div><i class="bl">10月*</i></div>
+        <div class="bw"><div class="bf zero" style="height:1.5%"><span>0</span></div><i class="bl">11月</i></div>
+        <div class="bw"><div class="bf zero" style="height:1.5%"><span>0</span></div><i class="bl">12月</i></div>
+      </div>
+    </div>
+    <p class="reveal" style="font-size:12px;color:var(--mut2);margin:12px 0 0">* 10 月为进行中数据（截至 10-13）；Q3 实际完成 1,080 万，占 H2 目标 24.7%。</p>
+
+    <div class="two">
+      <div class="ins ok reveal">
+        <div class="ic">✓</div>
+        <p><b>9 月打出了峰值。</b>582 万为 H2 单月最高，环比 8 月 +114%，说明「冲一冲能上去」不是口号，团队具备爆发能力。</p>
+      </div>
+      <div class="ins warn reveal">
+        <div class="ic">!</div>
+        <p><b>但 10 月没接住。</b>前 13 天 258 万，日均 19.9 万，按此节奏全月约 615 万，距 1,009 万差 394 万 —— 节奏断层出现在 Q3 收尾与 Q4 起跑之间。</p>
+      </div>
+      <div class="ins warn reveal">
+        <div class="ic">!</div>
+        <p><b>压力后置了。</b>Q3 只交付 24.7%，Q4 要扛 75.3%；月均需从 360 万抬到 1,009 万，是 <b>2.8 倍</b>。若 10 月停在 258 万，11–12 月各需 1,384 万，是 Q3 月均的 <b>3.85 倍</b>。</p>
+      </div>
+      <div class="ins reveal">
+        <div class="ic">→</div>
+        <p><b>结论：10 月不能松。</b>10 月每补 100 万，11–12 月的单月压力就往下降一档。今天的进度，决定 12 月是冲刺还是抢救。</p>
+      </div>
+    </div>
+
+    <div class="callout reveal">
+      一句话复盘：<b>能力已经证明过（9 月 582 万），问题不是能不能，而是<b style="color:#7dd3fc">没有连续地做到</b>。</b>Q4 要赢，赢在「每周都有新进度」，不是「月底冲一次」。
+    </div>
+  </div>
+</section>
+
+<!-- ============ SKILL ============ -->
+<section id="skill">
+  <div class="wrap">
+    <h2 class="sec reveal">02 / 有效可复用 Skill</h2>
+    <h3 class="big reveal">9 个已验证可复用的 Skill
+      <small>已经跑通、能复用、可交付 —— 下一步是把「个人的」变成「部门的」</small>
+    </h3>
+
+    <div class="skillbox">
+      <div class="skillnum reveal">
+        <div class="n">9</div>
+        <div class="l">个有效可复用 Skill</div>
+      </div>
+      <div class="steps">
+        <div class="step reveal">
+          <div class="no">1</div>
+          <div><h4>沉淀</h4><p>每个 Skill 明确四件事：解决什么问题、什么客户/阶段适用、操作步骤、产出物是什么。</p></div>
+        </div>
+        <div class="step reveal">
+          <div class="no">2</div>
+          <div><h4>复用</h4><p>部门内统一入口共享；新人上手直接用，不再从零摸索；每月统计一次调用/复用情况。</p></div>
+        </div>
+        <div class="step reveal">
+          <div class="no">3</div>
+          <div><h4>迭代</h4><p>用得最多的 Top 3 优先升级版本；用得不顺的当场改，Skill 是活的资产，不是一次性文档。</p></div>
+        </div>
+      </div>
+    </div>
+    <p class="reveal" style="margin:20px 0 0;font-size:14.5px;color:var(--ink2);padding-left:4px">
+      Q4 目标：在 9 个的基础上继续迭代，让「一个人跑通的方法」成为「一个部门的标准动作」——<b>这是效率的复利，也是团队最抗风险的资产。</b>
+    </p>
+  </div>
+</section>
+
+<!-- ============ Q4 ============ -->
+<section id="q4" style="background:#fff">
+  <div class="wrap">
+    <h2 class="sec reveal">03 / Q4 核心计划</h2>
+    <h3 class="big reveal">三条主线，一个都不能少
+      <small>EVA 消耗是硬仗，一体化能力是底子，AI 能力是杠杆</small>
+    </h3>
+
+    <div class="plan">
+      <!-- 计划一 -->
+      <div class="card hl reveal span2">
+        <span class="ptag">计划一 · 重点核心目标</span>
+        <h4>EVA 消耗攻坚</h4>
+        <p class="lead">Q4 需完成 3,285 万，剩余缺口 3,027 万 —— 这是季度里唯一的「硬指标」。</p>
+        <ol>
+          <li><b>继续激进战略：</b>授权客户环境，辅助开通 AI 功能，把「开通 → 使用 → 消耗」的动作用起来，主动推、贴身推。</li>
+          <li><b>抓校招窗口：</b>校招接近尾声，做好企业年度 + 校招季配置报表；EVA 专家新旧模式并行辅助，把业务闭环跑完，把积分消耗带出来。</li>
+          <li><b>盯大客户与有业务客户：</b>单客户占比不高，但加起来是基本盘 —— <b>每人每周都要有新的进度</b>，用周进度代替月底冲量。</li>
+          <li><b>人事侧扩面：</b>增加人事 EVA、BP EVA 的推广，把消耗场景从传统业务侧铺到 HR 侧。</li>
+        </ol>
+      </div>
+
+      <!-- 计划二 -->
+      <div class="card reveal">
+        <span class="ptag gray">计划二 · 能力底座</span>
+        <h4>一体化能力建设</h4>
+        <p class="lead">打造专业高能力的一体化团队</p>
+        <ol>
+          <li><b>上能 People，下能 ATS</b> —— 前端业务场景与后端系统能力两头都拿得住。</li>
+          <li><b>团队内取长补短</b>：谁在哪块最强，就把这块变成全组的方法和标准。</li>
+          <li><b>共同进步</b>：不靠个别尖子撑场面，靠整体水位抬升。</li>
+        </ol>
+      </div>
+
+      <!-- 计划三 -->
+      <div class="card reveal">
+        <span class="ptag gray">计划三 · 能力杠杆</span>
+        <h4>AI 能力不断提升</h4>
+        <p class="lead">让 AI 真正成为人效工具</p>
+        <ol>
+          <li><b>每两周一次 AI 技能分享</b>，内部轮值，人人上台。</li>
+          <li><b>全员提升 AI 能力</b>：从「会用」到「用出结果」。</li>
+          <li><b>落到服务人效上</b>：更少的时间做更多的事，把省下的时间还给客户和复盘。</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CLOSE ============ -->
+<section id="close" class="close">
+  <div class="wrap">
+    <h2 class="sec reveal" style="color:#38bdf8">04 / 最后</h2>
+    <h3 class="big reveal" style="color:#fff">数字是冷的，把它做热的是人
+      <small>Q3 我们没有赢下目标，但赢下了一件事：知道自己能打到多高。</small>
+    </h3>
+    <div class="line reveal">
+      9 月那 <b>582 万</b>，是团队在一整个月里把每个客户都往前推了一格换来的。<br>
+      Q4 需要的不是再来一次奇迹，而是<em>把 9 月的状态，变成 10、11、12 月的日常</em>。<br><br>
+      3,027 万的缺口看着吓人，但它不是一座山，是 <b>79 天、每一个客户、每一次开通、每一张报表</b>。<br>
+      一个人做一点不算什么，<b>一群人都做一点，就是目标的全部</b>。<br><br>
+      别等年底再拼。这个月往前走的那一步，就是年底庆功时最踏实的那一段路。
+    </div>
+
+    <div class="slogans">
+      <div class="reveal"><h5>敢开</h5><p>把 AI 能力开到客户环境里去，开通是消耗的起点。</p></div>
+      <div class="reveal"><h5>敢推</h5><p>每一分积分都有去处，每一次跟进都要有结果。</p></div>
+      <div class="reveal"><h5>敢分享</h5><p>把方法交出去，把能力变成团队资产，一起变强。</p></div>
+    </div>
+
+    <div class="sign reveal">华东区域 · 2026 Q3 总结 &amp; Q4 规划　|　一起把 Q4 打成 Q3 想成为的样子</div>
+  </div>
+</section>
+
+<footer>数据口径：EVA 积分消耗（万元），截至 2026-10-13 · 华东区域 2026 Q3 总结 &amp; Q4 规划</footer>
+
+<script>
+(function(){
+  var els = document.querySelectorAll('.reveal');
+  if(!('IntersectionObserver' in window)){ els.forEach(function(e){e.classList.add('in')}); return; }
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); }
+    });
+  },{threshold:.12,rootMargin:'0px 0px -40px 0px'});
+  els.forEach(function(e){ io.observe(e); });
+
+})();
+</script>
+</body>
+</html>
